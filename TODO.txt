@@ -1,0 +1,7 @@
+shaders && shader testing scene
+- PBR
+- shadows?
+
+sliders?
+
+Evaluate allowing non-const model passing for objects
