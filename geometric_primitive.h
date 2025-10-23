@@ -1,12 +1,10 @@
 #pragma once
 #include "model.h"
-#include "texture.h"
 
 namespace BLIB {
 
 	class geometric_primitive : public model, public mesh { 
 	protected:
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> texture;
 		virtual geometric_primitive* clone_impl() const override { return new geometric_primitive(*this); }
 		virtual void render(const float4x4& world, const color& material_color) const override;
 
@@ -14,16 +12,17 @@ namespace BLIB {
 		geometric_primitive();
 		virtual ~geometric_primitive() = default;
 
-		inline void load_texture(const wchar_t* filename, D3D11_TEXTURE2D_DESC* desc)			{ texture::load_file(filename, texture.ReleaseAndGetAddressOf(), desc); }
-		inline void copy_texture(const Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& SRV)	{ SRV.CopyTo(texture.ReleaseAndGetAddressOf()); }
+		inline void load_texture(const string& filename, texture_type slot = texture_map)										{ materials[0].textures[slot] = std::make_unique<material_texture_file>(filename);	materials[0].textures[slot]->construct(); }
+		inline void make_texture(color c, texture_type slot = texture_map)														{ materials[0].textures[slot] = std::make_unique<material_texture_dummy>(c);		materials[0].textures[slot]->construct(); }
+		inline void copy_texture(const Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& SRV, texture_type slot = texture_map)	{ SRV.CopyTo(materials[0].textures[slot]->data->get_release_SRV());					materials[0].textures[slot]->construct(); }
 
-		inline ID3D11ShaderResourceView** SRV_copy_dest() { return texture.ReleaseAndGetAddressOf(); }
+		inline auto& get_texture(texture_type slot = texture_map) { return materials[0].textures[slot]; }
 
 		inline float3 get_size() const override { return mesh::size(); }
 		inline const std::vector<triangle>& peek_triangles() const override { return mesh::peek_triangles(); }
 		inline uint32_t ray_collision(const transform& model_transform, const float3& origin, const float3& ray, float3* out_int_point, float3* out_int_normal, bool any_hit = false) const override { return mesh::ray_collision(model_transform, origin, ray, out_int_point, out_int_normal, any_hit); }
 	
-		void create_subsets();
+		void create_materials();
 	};
 
 	class quad : public geometric_primitive {

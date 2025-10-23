@@ -10,7 +10,7 @@ namespace BLIB {
 
 	class static_mesh : public model, protected mesh {
 	private:
-		custom_cube* bounding_box = nullptr;
+		std::unique_ptr<model> bounding_box = nullptr;
 
 	protected:
 		virtual static_mesh* clone_impl() const override { return new static_mesh(*this); }
@@ -19,6 +19,7 @@ namespace BLIB {
 	public:
 		static_mesh(const string& obj_filename) : static_mesh(obj_filename, false) {}
 		static_mesh(const string& obj_filename, bool uv_inverse);
+		static_mesh(const static_mesh& o) : model(o), mesh(o), bounding_box(nullptr) {}
 		virtual ~static_mesh();
 
 		void render_bounds(const float4x4& world, const color& material_color);

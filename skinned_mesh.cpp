@@ -74,11 +74,11 @@ skinned_mesh::skinned_mesh(const char* fbx_filename, bool triangulate, coordinat
 
 	fetch_meshes(fbx_scene);
 	fetch_animations(fbx_scene, animations, 0);
-	fetch_materials(fbx_scene);
+	fetch_materials(fbx_filename, fbx_scene);
 
 	fbx_manager->Destroy();
 
-	create_com_objects(fbx_filename);
+	create_com_objects();
 
 	//scene_view.create_hierarchy();
 	//animator.set_hierarchy(scene_view.hierarchy);
@@ -222,8 +222,17 @@ void skinned_mesh::fetch_meshes(FbxScene* fbx_scene) {
 	for (auto& mesh : meshes) { update_maximum(maximum, mesh.maximum); update_minimum(minimum, mesh.minimum); }
 }
 
-void skinned_mesh::fetch_materials(FbxScene* fbx_scene) {
+void find_property(const FbxSurfaceMaterial* fbx_material, FbxProperty& fbx_property, vector<string>& attempts) {
+	for (const auto& attempt : attempts) {
+		fbx_property = fbx_material->FindProperty(attempt);
+		if (fbx_property.IsValid()) { return; }
+	}
+	fbx_property = FbxProperty();
+}
+
+void skinned_mesh::fetch_materials(string fbx_filename, FbxScene* fbx_scene) {
 	const size_t node_count{ scene_view.nodes.size() };
+	const string fbx_filepath = fbx_filename.get_filepath();
 	for (size_t node_index = 0; node_index < node_count; node_index++) {
 		const scene_view::node& node{ scene_view.nodes.at(node_index) };
 		const FbxNode* fbx_node{ fbx_scene->FindNodeByName((const char*)node.name) };
@@ -233,24 +242,113 @@ void skinned_mesh::fetch_materials(FbxScene* fbx_scene) {
 			const FbxSurfaceMaterial* fbx_material{ fbx_node->GetMaterial(material_index) };
 
 			material material;
-			material.name = fbx_material->GetName();
-			material.unique_id = fbx_material->GetUniqueID();
+			material.unique_id	= fbx_material->GetUniqueID();
+			material.name		= fbx_material->GetName();
 
-			FbxProperty fbx_property{ fbx_material->FindProperty(FbxSurfaceMaterial::sDiffuse) };
-			if (fbx_property.IsValid()) {
-				const FbxDouble3 color{ fbx_property.Get<FbxDouble3>() };
-				material.Kd.r = static_cast<float>(color[0]);
-				material.Kd.g = static_cast<float>(color[1]);
-				material.Kd.b = static_cast<float>(color[2]);
-				material.Kd.a = 1.0f;
+			FbxProperty fbx_property;
 
-				const FbxFileTexture* fbx_texture{ fbx_property.GetSrcObject<FbxFileTexture>() };
-				material.texture_filenames[material::texture] = fbx_texture ? fbx_texture->GetRelativeFileName() : "";
+			/* Albedo */ {
+				vector<string> attempts{ FbxSurfaceMaterial::sDiffuse, "Diffuse", "BaseColor", "baseColor", "DiffuseColor" };
+				find_property(fbx_material, fbx_property, attempts);
+				if (fbx_property.IsValid()) {
+					const FbxDouble3 fbx_albedo{ fbx_property.Get<FbxDouble3>() };
+					color albedo;
+					albedo.r = static_cast<float>(fbx_albedo[0]);
+					albedo.g = static_cast<float>(fbx_albedo[1]);
+					albedo.b = static_cast<float>(fbx_albedo[2]);
+					albedo.a = 1.0f;
+
+					const FbxFileTexture* fbx_texture{ fbx_property.GetSrcObject<FbxFileTexture>() };
+					if (fbx_texture) { material.textures[texture_type::texture_map] = std::make_unique<material_texture_file>(fbx_filepath + fbx_texture->GetRelativeFileName()); }
+					else { material.textures[texture_type::texture_map] = std::make_unique<material_texture_dummy>(albedo); }
+				}
 			}
-			fbx_property = fbx_material->FindProperty(FbxSurfaceMaterial::sNormalMap);
-			if (fbx_property.IsValid()) {
-				const FbxFileTexture* fbx_texture{ fbx_property.GetSrcObject<FbxFileTexture>() };
-				material.texture_filenames[material::normal] = fbx_texture ? fbx_texture->GetRelativeFileName() : "";
+			
+			string ORM_files[3]{""};
+			color ORM = DEFAULT_ORM_MAP;
+
+			/* Occlusion */ {
+				vector<string> attempts{ "AmbientOcclusion", "AO" };
+				find_property(fbx_material, fbx_property, attempts);
+				if (fbx_property.IsValid()) {
+					if (const FbxFileTexture* tex = fbx_property.GetSrcObject<FbxFileTexture>()) {
+						ORM_files[0] = fbx_filepath + tex->GetRelativeFileName();
+					}
+					else {
+						const FbxDouble fbx_occlusion{ fbx_property.Get<FbxDouble>() };
+						ORM.r = static_cast<float>(fbx_occlusion);
+					}
+				}
+			}
+
+			/* Roughness */ {
+				vector<string> attempts{ "Roughness",};
+				find_property(fbx_material, fbx_property, attempts);
+				if (fbx_property.IsValid()) {
+					const FbxDouble fbx_roughness{ fbx_property.Get<FbxDouble>() };
+					ORM.g = static_cast<float>(fbx_roughness);
+				}
+				else {
+					attempts = { FbxSurfaceMaterial::sShininess, FbxSurfaceMaterial::sSpecularFactor, FbxSurfaceMaterial::sReflectionFactor };
+					find_property(fbx_material, fbx_property, attempts);
+					if (fbx_property.IsValid()) {
+						const FbxDouble fbx_shininess{ fbx_property.Get<FbxDouble>() };
+						ORM.g = sqrtf(2.0f / (static_cast<float>(fbx_shininess) + 2.0f));
+					}
+				}
+			}
+
+			/* Metallic */ {
+				vector<string> attempts{ "Metalness", "Metallic" };
+				find_property(fbx_material, fbx_property, attempts);
+				if (fbx_property.IsValid()) {
+					const FbxDouble fbx_metallic{ fbx_property.Get<FbxDouble>() };
+					ORM.b = static_cast<float>(fbx_metallic);
+				}
+				else {
+					attempts = { FbxSurfaceMaterial::sShininess, FbxSurfaceMaterial::sSpecular, FbxSurfaceMaterial::sReflection };
+					find_property(fbx_material, fbx_property, attempts);
+					const FbxDouble3 fbx_specular{ fbx_property.Get<FbxDouble3>() };
+					float3 specular;
+					specular.x = static_cast<float>(fbx_specular[0]);
+					specular.y = static_cast<float>(fbx_specular[1]);
+					specular.z = static_cast<float>(fbx_specular[2]);
+					ORM.b = clamp(0.0f, (specular.x + specular.y + specular.z) / 3, 1.0f);
+				}
+			}
+
+			material.textures[texture_type::ORM] = std::make_unique<material_texture_unpacked_orm>(ORM, ORM_files);
+
+			/* Normal */ {
+				vector<string> attempts{ FbxSurfaceMaterial::sNormalMap, "NormalMap", "NormalTexture" };
+				find_property(fbx_material, fbx_property, attempts);
+				if (fbx_property.IsValid()) {
+					const FbxFileTexture* fbx_texture{ fbx_property.GetSrcObject<FbxFileTexture>() };
+					if (fbx_texture) { material.textures[texture_type::normal_map] = std::make_unique<material_texture_file>(fbx_filepath + fbx_texture->GetRelativeFileName()); }
+				}
+				else {
+					attempts = { FbxSurfaceMaterial::sBump, "Bump" };
+					find_property(fbx_material, fbx_property, attempts);
+					const FbxFileTexture* fbx_texture{ fbx_property.GetSrcObject<FbxFileTexture>() };
+					if (fbx_texture) {  material.textures[texture_type::normal_map] = std::make_unique<material_texture_height>(fbx_filepath + fbx_texture->GetRelativeFileName()); }
+				}
+			}
+
+			/* Emissive */ {
+				vector<string> attempts{ FbxSurfaceMaterial::sEmissive, "Emissive", "EmissiveColor", "Emission" };
+				find_property(fbx_material, fbx_property, attempts);
+				if (fbx_property.IsValid()) {
+					const FbxDouble3 fbx_emissive{ fbx_property.Get<FbxDouble3>() };
+					color emissive;
+					emissive.r = static_cast<float>(fbx_emissive[0]);
+					emissive.g = static_cast<float>(fbx_emissive[1]);
+					emissive.b = static_cast<float>(fbx_emissive[2]);
+					emissive.a = 1.0f;
+
+					const FbxFileTexture* fbx_texture{ fbx_property.GetSrcObject<FbxFileTexture>() };
+					if (fbx_texture) { material.textures[texture_type::emissive] = std::make_unique<material_texture_file>(fbx_filepath + fbx_texture->GetRelativeFileName()); }
+					else { material.textures[texture_type::emissive] = std::make_unique<material_texture_dummy>(emissive); }
+				}
 			}
 
 			materials.emplace(material.unique_id, std::move(material));
@@ -355,7 +453,7 @@ void skinned_mesh::fetch_animations(FbxScene* fbx_scene, vector<animation>& anim
 
 // Com Objects
 
-void skinned_mesh::create_com_objects(string fbx_filename) {
+void skinned_mesh::create_com_objects() {
 	for (mesh& mesh : meshes) {
 		mesh.create_buffers();
 #if 0
@@ -364,20 +462,7 @@ void skinned_mesh::create_com_objects(string fbx_filename) {
 #endif
 	}
 
-	string path = fbx_filename.get_filepath();
-	for (std::unordered_map<uint64_t, material>::iterator it = materials.begin(); it != materials.end(); it++) {
-		for (size_t texture_index = 0; texture_index < 2; ++texture_index) {
-			if (it->second.texture_filenames[texture_index].length() > 0) {
-
-				string texture_path = path + it->second.texture_filenames[texture_index];
-				D3D11_TEXTURE2D_DESC texture2d_desc;
-				texture::load_file(path, it->second.shader_resource_views[texture_index].GetAddressOf(), &texture2d_desc);
-			}
-			else {
-				texture::make_dummy(it->second.shader_resource_views[texture_index].GetAddressOf(), texture_index == 1 ? 0xFFFF7F7F : 0xFFFFFFFF, 16);
-			}
-		}
-	}
+	for (auto& mat : materials) { mat.second.construct(); }
 
 	input_element_desc = {
 			{"POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -499,12 +584,12 @@ void skinned_mesh::render(const float4x4& world, const color& material_color) co
 		for (const mesh::subset& subset : mesh.subsets)
 		{
 			const material& material{ materials.at(subset.material_unique_id) };
-			data.material_color = material_color * material.Kd;
+			data.material_color = material_color;
 
 			device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
 			device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
 			device::context()->VSSetShaderResources(4, 1, mesh.get_bones());
-			device::context()->PSSetShaderResources(0, 4, material.shader_resource_views[0].GetAddressOf());
+			material.bind(0);
 			device::context()->DrawIndexed(subset.index_count, subset.start_index_location, 0);
 		}
 	}

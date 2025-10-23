@@ -36,12 +36,12 @@ namespace BLIB {
 		friend skinned_mesh* cereal::access::construct();
 
 		void fetch_meshes		(FbxScene* fbx_scene);
-		void fetch_materials	(FbxScene* fbx_scene);
+		void fetch_materials	(string fbx_filename,		FbxScene* fbx_scene);
 		void fetch_bones		(const FbxMesh* fbx_mesh,	std::vector<std::vector<bone_inf>>& bones);
 		void fetch_skeleton		(const FbxMesh* fbx_mesh,	skeleton& bind_pose);
 		void fetch_animations	(FbxScene* fbx_scene,		std::vector<animation>& animation_clips, float sampling_rate);
 
-		void create_com_objects(string fbx_filename);
+		void create_com_objects();
 
 		mutable bool cached_triangles = false;
 		mutable std::vector<triangle> triangle_cache;

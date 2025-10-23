@@ -6,12 +6,14 @@ using namespace BLIB;
 
 geometric_primitive::geometric_primitive() {
 	input_element_desc = {
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"NORMAL",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TANGENT",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 	create_shaders("geometric_primitive");
-	texture::make_dummy(texture.GetAddressOf(), 0xFFFFFFFF, 16);
+	create_materials();
+
 	minimum = -0.5f;
 	maximum = 0.5f;
 }
@@ -30,26 +32,28 @@ void geometric_primitive::render(const float4x4& world, const color& material_co
 	device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
 	device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
 
-	device::context()->PSSetShaderResources(0, 1, texture.GetAddressOf());
+	materials.at(0).bind(0);
 
 	D3D11_BUFFER_DESC buffer_desc;
 	get_indices()->GetDesc(&buffer_desc);
 	device::context()->DrawIndexed(buffer_desc.ByteWidth / sizeof(uint32_t), 0, 0);
 }
 
-void geometric_primitive::create_subsets() {
+void geometric_primitive::create_materials() {
 	material mat;
+	mat.name = "primitive_material";
+	mat.unique_id = 0;
+	mat.construct();
 
-
-	subset& data = subsets.emplace_back();
+	materials.emplace(mat.unique_id, std::move(mat));
 }
 
 quad::quad() {
 	vertices = {
-		{ { -0.5f,  0.5f, 0.0f }, { 0, 0, -1 }, { 0, 0 } },
-		{ {  0.5f,  0.5f, 0.0f }, { 0, 0, -1 }, { 1, 0 } },
-		{ { -0.5f, -0.5f, 0.0f }, { 0, 0, -1 }, { 0, 1 } },
-		{ {  0.5f, -0.5f, 0.0f }, { 0, 0, -1 }, { 1, 1 } }
+		{ { -0.5f,  0.5f, 0.0f }, { 0, 0, -1 }, { 0, 0 }, { 1, 0, 0, -1 } },
+		{ {  0.5f,  0.5f, 0.0f }, { 0, 0, -1 }, { 1, 0 }, { 1, 0, 0, -1 } },
+		{ { -0.5f, -0.5f, 0.0f }, { 0, 0, -1 }, { 0, 1 }, { 1, 0, 0, -1 } },
+		{ {  0.5f, -0.5f, 0.0f }, { 0, 0, -1 }, { 1, 1 }, { 1, 0, 0, -1 } }
 	};
 
 	indices = { 0, 1, 2, 2, 1, 3 };
@@ -59,36 +63,36 @@ quad::quad() {
 
 cube::cube() : geometric_primitive() {
 	vertices = {
-		// front + 0
-		{{-0.5f, -0.5f, -0.5f}, { 0,  0, -1}, { 0, 0 }}, // 0         3 ---- 2 
-		{{ 0.5f, -0.5f, -0.5f}, { 0,  0, -1}, { 1, 0 }}, // 1         |      |
-		{{ 0.5f,  0.5f, -0.5f}, { 0,  0, -1}, { 1, 1 }}, // 2         |      |
-		{{-0.5f,  0.5f, -0.5f}, { 0,  0, -1}, { 0, 1 }}, // 3         0 ---- 1
-		// right + 4
-		{{ 0.5f, -0.5f, -0.5f}, { 1,  0,  0}, { 0, 0 }}, // 4  (1)    2 ---- 6
-		{{ 0.5f,  0.5f, -0.5f}, { 1,  0,  0}, { 1, 0 }}, // 5  (2)    |      |
-		{{ 0.5f, -0.5f,  0.5f}, { 1,  0,  0}, { 1, 1 }}, // 6  (5)    |      |
-		{{ 0.5f,  0.5f,  0.5f}, { 1,  0,  0}, { 0, 1 }}, // 7  (6)    1 ---- 5
+		// front
+		{ { -0.5f, -0.5f, -0.5f }, {  0,  0, -1 }, { 0, 0 }, {  1,  0,  0,  1 } }, // 0         3 ---- 2 
+		{ {  0.5f, -0.5f, -0.5f }, {  0,  0, -1 }, { 1, 0 }, {  1,  0,  0,  1 } }, // 1         |      |
+		{ {  0.5f,  0.5f, -0.5f }, {  0,  0, -1 }, { 1, 1 }, {  1,  0,  0,  1 } }, // 2         |      |
+		{ { -0.5f,  0.5f, -0.5f }, {  0,  0, -1 }, { 0, 1 }, {  1,  0,  0,  1 } }, // 3         0 ---- 1
+		// right
+		{ {  0.5f, -0.5f, -0.5f }, {  1,  0,  0 }, { 0, 0 }, {  0,  0,  1,  1 } }, // 4  (1)    2 ---- 6
+		{ {  0.5f,  0.5f, -0.5f }, {  1,  0,  0 }, { 1, 0 }, {  0,  0,  1,  1 } }, // 5  (2)    |      |
+		{ {  0.5f, -0.5f,  0.5f }, {  1,  0,  0 }, { 1, 1 }, {  0,  0,  1,  1 } }, // 6  (5)    |      |
+		{ {  0.5f,  0.5f,  0.5f }, {  1,  0,  0 }, { 0, 1 }, {  0,  0,  1,  1 } }, // 7  (6)    1 ---- 5
 		// back
-		{{-0.5f, -0.5f,  0.5f}, { 0,  0,  1}, { 0, 0 }}, // 8  (4)    6 ---- 7
-		{{ 0.5f, -0.5f,  0.5f}, { 0,  0,  1}, { 1, 0 }}, // 9  (5)    |      |
-		{{ 0.5f,  0.5f,  0.5f}, { 0,  0,  1}, { 1, 1 }}, // 10 (6)    |      |
-		{{-0.5f,  0.5f,  0.5f}, { 0,  0,  1}, { 0, 1 }}, // 11 (7)    5 ---- 4
-		// left
-		{{-0.5f, -0.5f, -0.5f}, {-1,  0,  0}, { 0, 0 }}, // 12 (0)    7 ---- 3
-		{{-0.5f,  0.5f, -0.5f}, {-1,  0,  0}, { 1, 0 }}, // 13 (3)    |      |
-		{{-0.5f, -0.5f,  0.5f}, {-1,  0,  0}, { 1, 1 }}, // 14 (4)    |      |
-		{{-0.5f,  0.5f,  0.5f}, {-1,  0,  0}, { 0, 1 }}, // 15 (7)    4 ---- 0
+		{ { -0.5f, -0.5f,  0.5f }, {  0,  0,  1 }, { 0, 0 }, { -1,  0,  0,  1 } }, // 8  (4)    6 ---- 7
+		{ {  0.5f, -0.5f,  0.5f }, {  0,  0,  1 }, { 1, 0 }, { -1,  0,  0,  1 } }, // 9  (5)    |      |
+		{ {  0.5f,  0.5f,  0.5f }, {  0,  0,  1 }, { 1, 1 }, { -1,  0,  0,  1 } }, // 10 (6)    |      |
+		{ { -0.5f,  0.5f,  0.5f }, {  0,  0,  1 }, { 0, 1 }, { -1,  0,  0,  1 } }, // 11 (7)    5 ---- 4
+		// left 
+		{ { -0.5f, -0.5f, -0.5f }, { -1,  0,  0 }, { 0, 0 }, {  0,  0, -1,  1 } }, // 12 (0)    7 ---- 3
+		{ { -0.5f,  0.5f, -0.5f }, { -1,  0,  0 }, { 1, 0 }, {  0,  0, -1,  1 } }, // 13 (3)    |      |
+		{ { -0.5f, -0.5f,  0.5f }, { -1,  0,  0 }, { 1, 1 }, {  0,  0, -1,  1 } }, // 14 (4)    |      |
+		{ { -0.5f,  0.5f,  0.5f }, { -1,  0,  0 }, { 0, 1 }, {  0,  0, -1,  1 } }, // 15 (7)    4 ---- 0
 		// down
-		{{-0.5f, -0.5f, -0.5f}, { 0, -1,  0}, { 0, 0 }}, // 16 (0)    0 ---- 1
-		{{ 0.5f, -0.5f, -0.5f}, { 0, -1,  0}, { 1, 0 }}, // 17 (1)    |      |
-		{{-0.5f, -0.5f,  0.5f}, { 0, -1,  0}, { 1, 1 }}, // 18 (4)    |      |
-		{{ 0.5f, -0.5f,  0.5f}, { 0, -1,  0}, { 0, 1 }}, // 19 (5)    4 ---- 5
+		{ { -0.5f, -0.5f, -0.5f }, {  0, -1,  0 }, { 0, 0 }, {  1,  0,  0,  1 } }, // 16 (0)    0 ---- 1
+		{ {  0.5f, -0.5f, -0.5f }, {  0, -1,  0 }, { 1, 0 }, {  1,  0,  0,  1 } }, // 17 (1)    |      |
+		{ { -0.5f, -0.5f,  0.5f }, {  0, -1,  0 }, { 1, 1 }, {  1,  0,  0,  1 } }, // 18 (4)    |      |
+		{ {  0.5f, -0.5f,  0.5f }, {  0, -1,  0 }, { 0, 1 }, {  1,  0,  0,  1 } }, // 19 (5)    4 ---- 5
 		// up
-		{{ 0.5f,  0.5f, -0.5f}, { 0,  1,  0}, { 0, 0 }}, // 20 (2)    7 ---- 6
-		{{-0.5f,  0.5f, -0.5f}, { 0,  1,  0}, { 1, 0 }}, // 21 (3)    |      |
-		{{ 0.5f,  0.5f,  0.5f}, { 0,  1,  0}, { 1, 1 }}, // 22 (6)    |      |
-		{{-0.5f,  0.5f,  0.5f}, { 0,  1,  0}, { 0, 1 }}, // 23 (7)    3 ---- 2
+		{ {  0.5f,  0.5f, -0.5f }, {  0,  1,  0 }, { 0, 0 }, { -1,  0,  0,  1 } }, // 20 (2)    7 ---- 6
+		{ { -0.5f,  0.5f, -0.5f }, {  0,  1,  0 }, { 1, 0 }, { -1,  0,  0,  1 } }, // 21 (3)    |      |
+		{ {  0.5f,  0.5f,  0.5f }, {  0,  1,  0 }, { 1, 1 }, { -1,  0,  0,  1 } }, // 22 (6)    |      |
+		{ { -0.5f,  0.5f,  0.5f }, {  0,  1,  0 }, { 0, 1 }, { -1,  0,  0,  1 } }, // 23 (7)    3 ---- 2
 	};
 
 	indices = {
@@ -109,36 +113,36 @@ custom_cube::custom_cube(float3 min, float3 max) : geometric_primitive() {
 	
 	vertices = {
 		// front + 0
-		{{min.x, min.y, min.z}, { 0,  0, -1}, { 0, 0 }}, // 0         3 ---- 2 
-		{{max.x, min.y, min.z}, { 0,  0, -1}, { 1, 0 }}, // 1         |      |
-		{{max.x, max.y, min.z}, { 0,  0, -1}, { 1, 1 }}, // 2         |      |
-		{{min.x, max.y, min.z}, { 0,  0, -1}, { 0, 1 }}, // 3         0 ---- 1
+		{ { min.x, min.y, min.z }, {  0,  0, -1 }, { 0, 0 }, {  1,  0,  0,  1 } }, // 0         3 ---- 2 
+		{ { max.x, min.y, min.z }, {  0,  0, -1 }, { 1, 0 }, {  1,  0,  0,  1 } }, // 1         |      |
+		{ { max.x, max.y, min.z }, {  0,  0, -1 }, { 1, 1 }, {  1,  0,  0,  1 } }, // 2         |      |
+		{ { min.x, max.y, min.z }, {  0,  0, -1 }, { 0, 1 }, {  1,  0,  0,  1 } }, // 3         0 ---- 1
 		// right + 4
-		{{max.x, min.y, min.z}, { 1,  0,  0}, { 0, 0 }}, // 4  (1)    2 ---- 6
-		{{max.x, max.y, min.z}, { 1,  0,  0}, { 1, 0 }}, // 5  (2)    |      |
-		{{max.x, min.y, max.z}, { 1,  0,  0}, { 1, 1 }}, // 6  (5)    |      |
-		{{max.x, max.y, max.z}, { 1,  0,  0}, { 0, 1 }}, // 7  (6)    1 ---- 5
+		{ { max.x, min.y, min.z }, {  1,  0,  0 }, { 0, 0 }, {  0,  0,  1,  1 } }, // 4  (1)    2 ---- 6
+		{ { max.x, max.y, min.z }, {  1,  0,  0 }, { 1, 0 }, {  0,  0,  1,  1 } }, // 5  (2)    |      |
+		{ { max.x, min.y, max.z }, {  1,  0,  0 }, { 1, 1 }, {  0,  0,  1,  1 } }, // 6  (5)    |      |
+		{ { max.x, max.y, max.z }, {  1,  0,  0 }, { 0, 1 }, {  0,  0,  1,  1 } }, // 7  (6)    1 ---- 5
 		// back
-		{{min.x, min.y, max.z}, { 0,  0,  1}, { 0, 0 }}, // 8  (4)    6 ---- 7
-		{{max.x, min.y, max.z}, { 0,  0,  1}, { 1, 0 }}, // 9  (5)    |      |
-		{{max.x, max.y, max.z}, { 0,  0,  1}, { 1, 1 }}, // 10 (6)    |      |
-		{{min.x, max.y, max.z}, { 0,  0,  1}, { 0, 1 }}, // 11 (7)    5 ---- 4
+		{ { min.x, min.y, max.z }, {  0,  0,  1 }, { 0, 0 }, { -1,  0,  0,  1 } }, // 8  (4)    6 ---- 7
+		{ { max.x, min.y, max.z }, {  0,  0,  1 }, { 1, 0 }, { -1,  0,  0,  1 } }, // 9  (5)    |      |
+		{ { max.x, max.y, max.z }, {  0,  0,  1 }, { 1, 1 }, { -1,  0,  0,  1 } }, // 10 (6)    |      |
+		{ { min.x, max.y, max.z }, {  0,  0,  1 }, { 0, 1 }, { -1,  0,  0,  1 } }, // 11 (7)    5 ---- 4
 		// left
-		{{min.x, min.y, min.z}, {-1,  0,  0}, { 0, 0 }}, // 12 (0)    7 ---- 3
-		{{min.x, max.y, min.z}, {-1,  0,  0}, { 1, 0 }}, // 13 (3)    |      |
-		{{min.x, min.y, max.z}, {-1,  0,  0}, { 1, 1 }}, // 14 (4)    |      |
-		{{min.x, max.y, max.z}, {-1,  0,  0}, { 0, 1 }}, // 15 (7)    4 ---- 0
+		{ { min.x, min.y, min.z }, { -1,  0,  0 }, { 0, 0 }, {  0,  0, -1,  1 } }, // 12 (0)    7 ---- 3
+		{ { min.x, max.y, min.z }, { -1,  0,  0 }, { 1, 0 }, {  0,  0, -1,  1 } }, // 13 (3)    |      |
+		{ { min.x, min.y, max.z }, { -1,  0,  0 }, { 1, 1 }, {  0,  0, -1,  1 } }, // 14 (4)    |      |
+		{ { min.x, max.y, max.z }, { -1,  0,  0 }, { 0, 1 }, {  0,  0, -1,  1 } }, // 15 (7)    4 ---- 0
 		// down
-		{{min.x, min.y, min.z}, { 0, -1,  0}, { 0, 0 }}, // 16 (0)    0 ---- 1
-		{{max.x, min.y, min.z}, { 0, -1,  0}, { 1, 0 }}, // 17 (1)    |      |
-		{{min.x, min.y, max.z}, { 0, -1,  0}, { 1, 1 }}, // 18 (4)    |      |
-		{{max.x, min.y, max.z}, { 0, -1,  0}, { 0, 1 }}, // 19 (5)    4 ---- 5
+		{ { min.x, min.y, min.z }, {  0, -1,  0 }, { 0, 0 }, {  1,  0,  0,  1 } }, // 16 (0)    0 ---- 1
+		{ { max.x, min.y, min.z }, {  0, -1,  0 }, { 1, 0 }, {  1,  0,  0,  1 } }, // 17 (1)    |      |
+		{ { min.x, min.y, max.z }, {  0, -1,  0 }, { 1, 1 }, {  1,  0,  0,  1 } }, // 18 (4)    |      |
+		{ { max.x, min.y, max.z }, {  0, -1,  0 }, { 0, 1 }, {  1,  0,  0,  1 } }, // 19 (5)    4 ---- 5
 		// up
-		{{max.x, max.y, min.z}, { 0,  1,  0}, { 0, 0 }}, // 20 (2)    7 ---- 6
-		{{min.x, max.y, min.z}, { 0,  1,  0}, { 1, 0 }}, // 21 (3)    |      |
-		{{max.x, max.y, max.z}, { 0,  1,  0}, { 1, 1 }}, // 22 (6)    |      |
-		{{min.x, max.y, max.z}, { 0,  1,  0}, { 0, 1 }}, // 23 (7)    3 ---- 2
-	};
+		{ { max.x, max.y, min.z }, {  0,  1,  0 }, { 0, 0 }, { -1,  0,  0,  1 } }, // 20 (2)    7 ---- 6
+		{ { min.x, max.y, min.z }, {  0,  1,  0 }, { 1, 0 }, { -1,  0,  0,  1 } }, // 21 (3)    |      |
+		{ { max.x, max.y, max.z }, {  0,  1,  0 }, { 1, 1 }, { -1,  0,  0,  1 } }, // 22 (6)    |      |
+		{ { min.x, max.y, max.z }, {  0,  1,  0 }, { 0, 1 }, { -1,  0,  0,  1 } }, // 23 (7)    3 ---- 2
+	}; 
 
 	indices = {
 		 2,  1,  0,  0,  3,  2,
@@ -169,8 +173,8 @@ cylinder::cylinder(int edges) : geometric_primitive() {
 	vertices.resize(vertex_count);
 	indices.resize(index_count);
 
-	vertices[0] = { {0.0f, -0.5f, 0.0f}, {0, -1, 0} };
-	vertices[1] = { {0.0f,  0.5f, 0.0f}, {0,  1, 0} };
+	vertices[0] = { { 0.0f, -0.5f, 0.0f }, { 0, -1, 0 }, { 0, 0 }, { 1, 0, 0, 1 }}; // bottom
+	vertices[1] = { { 0.0f,  0.5f, 0.0f }, { 0,  1, 0 }, { 0, 0 }, { 1, 0, 0, 1 }}; // top
 
 	int vi = 2; // vertices index
 	int ii = 0; // indices index
@@ -181,17 +185,22 @@ cylinder::cylinder(int edges) : geometric_primitive() {
 
 		int sv = vi; // start vertex
 
+		float ca1 = cosf(a1);
+		float ca2 = cosf(a2);
+		float sa1 = sinf(a1);
+		float sa2 = sinf(a2);
+
 		// Faces
-		vertices[vi++] = { {cosf(a1) / 2.0f, -0.5f, sinf(a1) / 2.0f}, {cosf(a1), 0, sinf(a1)} }; // 0   1 ---- 3
-		vertices[vi++] = { {cosf(a1) / 2.0f,  0.5f, sinf(a1) / 2.0f}, {cosf(a1), 0, sinf(a1)} }; // 1   |   ,' |
-		vertices[vi++] = { {cosf(a2) / 2.0f, -0.5f, sinf(a2) / 2.0f}, {cosf(a2), 0, sinf(a2)} }; // 2   | ,'   |
-		vertices[vi++] = { {cosf(a2) / 2.0f,  0.5f, sinf(a2) / 2.0f}, {cosf(a2), 0, sinf(a2)} }; // 3   0 ---- 2
+		vertices[vi++] = { { ca1 / 2.0f, -0.5f, sa1 / 2.0f }, { ca1, 0, sa1 }, { 0, 0 }, { -sa1, 0, ca1, 1 } }; // 0   1 ---- 3
+		vertices[vi++] = { { ca1 / 2.0f,  0.5f, sa1 / 2.0f }, { ca1, 0, sa1 }, { 0, 0 }, { -sa1, 0, ca1, 1 } }; // 1   |   ,' |
+		vertices[vi++] = { { ca2 / 2.0f, -0.5f, sa2 / 2.0f }, { ca2, 0, sa2 }, { 0, 0 }, { -sa2, 0, ca2, 1 } }; // 2   | ,'   |
+		vertices[vi++] = { { ca2 / 2.0f,  0.5f, sa2 / 2.0f }, { ca2, 0, sa2 }, { 0, 0 }, { -sa2, 0, ca2, 1 } }; // 3   0 ---- 2
 
 		// Top and Bottom
-		vertices[vi++] = { {cosf(a1) / 2.0f, -0.5f, sinf(a1) / 2.0f}, {0, -1, 0} }; // 4
-		vertices[vi++] = { {cosf(a2) / 2.0f, -0.5f, sinf(a2) / 2.0f}, {0, -1, 0} }; // 5    4 > 5 > bottom center
-		vertices[vi++] = { {cosf(a1) / 2.0f,  0.5f, sinf(a1) / 2.0f}, {0,  1, 0} }; // 6    7 > 6 > top center
-		vertices[vi++] = { {cosf(a2) / 2.0f,  0.5f, sinf(a2) / 2.0f}, {0,  1, 0} }; // 7 
+		vertices[vi++] = { { ca1 / 2.0f, -0.5f, sa1 / 2.0f }, { 0, -1, 0 }, { 0, 0 }, { 1, 0, 0, 1 } }; // 4
+		vertices[vi++] = { { ca2 / 2.0f, -0.5f, sa2 / 2.0f }, { 0, -1, 0 }, { 0, 0 }, { 1, 0, 0, 1 } }; // 5    4 > 5 > bottom center
+		vertices[vi++] = { { ca1 / 2.0f,  0.5f, sa1 / 2.0f }, { 0,  1, 0 }, { 0, 0 }, { 1, 0, 0, 1 } }; // 6    7 > 6 > top center
+		vertices[vi++] = { { ca2 / 2.0f,  0.5f, sa2 / 2.0f }, { 0,  1, 0 }, { 0, 0 }, { 1, 0, 0, 1 } }; // 7 
 
 		// Faces
 		indices[ii++] = sv + 3;
@@ -249,31 +258,36 @@ sphere::sphere(int edges) : geometric_primitive() {
 	vertices.resize(vertex_count);
 	indices.resize(index_count);
 
-	vertices[0] = { {0.0f, -0.5f, 0.0f}, {0, -1, 0} }; // bottom
-	vertices[1] = { {0.0f,  0.5f, 0.0f}, {0,  1, 0} }; // top
+	vertices[0] = { { 0.0f, -0.5f, 0.0f }, { 0, -1, 0 }, { 0, 0 }, { 1, 0, 0,  1 } }; // bottom
+	vertices[1] = { { 0.0f,  0.5f, 0.0f }, { 0,  1, 0 }, { 0, 0 }, { 1, 0, 0, -1 } }; // top
 
 	int vi = 2; // vertices index
 	int ii = 0; // indices index
 
 	for (int hedge = 0; hedge < edges; hedge++) {
-		float ax1 = (float)hedge / (float)edges * DirectX::XM_2PI;
-		float ax2 = (float)(hedge + 1) / (float)edges * DirectX::XM_2PI;
+		float ax1 = (float) hedge		/ (float)edges * DirectX::XM_2PI;
+		float ax2 = (float)(hedge + 1)	/ (float)edges * DirectX::XM_2PI;
+
+		float cax1 = cosf(ax1);
+		float cax2 = cosf(ax2);
+		float sax1 = sinf(ax1);
+		float sax2 = sinf(ax2);
 
 		for (int vedge = 0; vedge < edges - 1; vedge++) {
-			float ay1 = (float) vedge      / ((float)edges - 1) * DirectX::XM_PI;
-			float ay2 = (float)(vedge + 1) / ((float)edges - 1) * DirectX::XM_PI;
-
 			if (vedge == 0 /* Bottom */) {
 				int sv = vi; // start vertex
 
-				float x1y2 =  sinf(ay2) * cosf(ax1);
-				float x2y2 =  sinf(ay2) * cosf(ax2);
-				float y2   = -cosf(ay2);
-				float z1y2 =  sinf(ay2) * sinf(ax1);
-				float z2y2 =  sinf(ay2) * sinf(ax2);
+				float ay2 = (float)(vedge + 1) / ((float)edges - 1) * DirectX::XM_PI;
+				float say2 = sinf(ay2);
 
-				vertices[vi++] = { {x1y2 / 2.0f, y2 / 2.0f, z1y2 / 2.0f}, {x1y2, y2, z1y2} }; // 0
-				vertices[vi++] = { {x2y2 / 2.0f, y2 / 2.0f, z2y2 / 2.0f}, {x2y2, y2, z2y2} }; // 1    0 > 1 > bottom 
+				float x1y2 =  say2 * cax1;
+				float x2y2 =  say2 * cax2;
+				float y2   = -cosf(ay2);
+				float z1y2 =  say2 * sax1;
+				float z2y2 =  say2 * sax2;
+
+				vertices[vi++] = { { x1y2 / 2.0f, y2 / 2.0f, z1y2 / 2.0f }, { x1y2, y2, z1y2 }, { 0, 0 }, { -sax1, 0, cax1, 1 } }; // 0
+				vertices[vi++] = { { x2y2 / 2.0f, y2 / 2.0f, z2y2 / 2.0f }, { x2y2, y2, z2y2 }, { 0, 0 }, { -sax2, 0, cax2, 1 } }; // 1    0 > 1 > bottom 
 
 				indices[ii++] = sv + 0;
 				indices[ii++] = sv + 1;
@@ -282,14 +296,17 @@ sphere::sphere(int edges) : geometric_primitive() {
 			else if (vedge == edges - 2 /* Top */) {
 				int sv = vi; // start vertex
 
-				float x1y1 =  sinf(ay1) * cosf(ax1);
-				float x2y1 =  sinf(ay1) * cosf(ax2);
-				float y1   = -cosf(ay1);
-				float z1y1 =  sinf(ay1) * sinf(ax1);
-				float z2y1 =  sinf(ay1) * sinf(ax2);
+				float ay1 = (float) vedge / ((float)edges - 1) * DirectX::XM_PI;
+				float say1 = sinf(ay1);
 
-				vertices[vi++] = { {x1y1 / 2.0f, y1 / 2.0f, z1y1 / 2.0f}, {x1y1, y1, z1y1} }; // 0
-				vertices[vi++] = { {x2y1 / 2.0f, y1 / 2.0f, z2y1 / 2.0f}, {x2y1, y1, z2y1} }; // 1    1 > 0 > top 
+				float x1y1 =  say1 * cax1;
+				float x2y1 =  say1 * cax2;
+				float y1   = -cosf(ay1);
+				float z1y1 =  say1 * sax1;
+				float z2y1 =  say1 * sax2;
+
+				vertices[vi++] = { { x1y1 / 2.0f, y1 / 2.0f, z1y1 / 2.0f }, { x1y1, y1, z1y1 }, { 0, 0 }, { -sax1, 0, cax1, 1 } }; // 0
+				vertices[vi++] = { { x2y1 / 2.0f, y1 / 2.0f, z2y1 / 2.0f }, { x2y1, y1, z2y1 }, { 0, 0 }, { -sax2, 0, cax2, 1 } }; // 1    1 > 0 > top 
 
 				indices[ii++] = sv + 1;
 				indices[ii++] = sv + 0;
@@ -298,21 +315,29 @@ sphere::sphere(int edges) : geometric_primitive() {
 			else {
 				int sv = vi; // start vertex
 
-				float x1y1 =  sinf(ay1) * cosf(ax1);
-				float x2y1 =  sinf(ay1) * cosf(ax2);
-				float x1y2 =  sinf(ay2) * cosf(ax1);
-				float x2y2 =  sinf(ay2) * cosf(ax2);
+				float ay1 = (float) vedge      / ((float)edges - 1) * DirectX::XM_PI;
+				float ay2 = (float)(vedge + 1) / ((float)edges - 1) * DirectX::XM_PI;
+				float say1 = sinf(ay1);
+				float say2 = sinf(ay2);
+
+				float x1y1 =  say1 * cax1;
+				float x2y1 =  say1 * cax2;
+				float x1y2 =  say2 * cax1;
+				float x2y2 =  say2 * cax2;
 				float y1   = -cosf(ay1);
 				float y2   = -cosf(ay2);
-				float z1y1 =  sinf(ay1) * sinf(ax1);
-				float z2y1 =  sinf(ay1) * sinf(ax2);
-				float z1y2 =  sinf(ay2) * sinf(ax1);
-				float z2y2 =  sinf(ay2) * sinf(ax2);
+				float z1y1 =  say1 * sax1;
+				float z2y1 =  say1 * sax2;
+				float z1y2 =  say2 * sax1;
+				float z2y2 =  say2 * sax2;
 
-				vertices[vi++] = { {x1y1 / 2.0f, y1 / 2.0f, z1y1 / 2.0f}, {x1y1, y1, z1y1}, {0, 0} }; // 0   1 ---- 3
-				vertices[vi++] = { {x1y2 / 2.0f, y2 / 2.0f, z1y2 / 2.0f}, {x1y2, y2, z1y2}, {0, 1} }; // 1   |   ,' |
-				vertices[vi++] = { {x2y1 / 2.0f, y1 / 2.0f, z2y1 / 2.0f}, {x2y1, y1, z2y1}, {1, 0} }; // 2   | ,'   |
-				vertices[vi++] = { {x2y2 / 2.0f, y2 / 2.0f, z2y2 / 2.0f}, {x2y2, y2, z2y2}, {1, 1} }; // 3   0 ---- 2
+				//float w1 = (y1 < 0) ? 1.0f : 1.0f;
+				//float w2 = (y2 < 0) ? 1.0f : 1.0f;
+
+				vertices[vi++] = { { x1y1 / 2.0f, y1 / 2.0f, z1y1 / 2.0f }, { x1y1, y1, z1y1 }, { 0, 0 }, { -sax1, 0, cax1, 1 } }; // 0   1 ---- 3
+				vertices[vi++] = { { x1y2 / 2.0f, y2 / 2.0f, z1y2 / 2.0f }, { x1y2, y2, z1y2 }, { 0, 0 }, { -sax1, 0, cax1, 1 } }; // 1   |   ,' |
+				vertices[vi++] = { { x2y1 / 2.0f, y1 / 2.0f, z2y1 / 2.0f }, { x2y1, y1, z2y1 }, { 0, 0 }, { -sax2, 0, cax2, 1 } }; // 2   | ,'   |
+				vertices[vi++] = { { x2y2 / 2.0f, y2 / 2.0f, z2y2 / 2.0f }, { x2y2, y2, z2y2 }, { 0, 0 }, { -sax2, 0, cax2, 1 } }; // 3   0 ---- 2
 
 				indices[ii++] = sv + 3;
 				indices[ii++] = sv + 2;
@@ -339,8 +364,8 @@ capsule::capsule(float height, float radius, int edges) : geometric_primitive() 
 	vertices.resize(vertex_count);
 	indices.resize(index_count);
 
-	vertices[0] = { {0.0f, -height - radius, 0.0f}, {0, -1, 0} }; // bottom
-	vertices[1] = { {0.0f,  height + radius, 0.0f}, {0,  1, 0} }; // top
+	vertices[0] = { { 0.0f, -height - radius, 0.0f }, { 0, -1, 0 }, { 0, 0 }, { 1, 0, 0, 1 } }; // bottom
+	vertices[1] = { { 0.0f,  height + radius, 0.0f }, { 0,  1, 0 }, { 0, 0 }, { 1, 0, 0, 1 } }; // top
 
 	int vi = 2; // vertices index
 	int ii = 0; // indices index
@@ -349,13 +374,18 @@ capsule::capsule(float height, float radius, int edges) : geometric_primitive() 
 		float ax1 = (float)hedge / (float)edges * DirectX::XM_2PI;
 		float ax2 = (float)(hedge + 1) / (float)edges * DirectX::XM_2PI;
 
+		float cax1 = cosf(ax1);
+		float cax2 = cosf(ax2);
+		float sax1 = sinf(ax1);
+		float sax2 = sinf(ax2);
+
 		/* cylinder */ {
 			int sv = vi; // start vertex
 
-			vertices[vi++] = { {cosf(ax1) * radius, -height, sinf(ax1) * radius}, {cosf(ax1), 0, sinf(ax1)} }; // 0   1 ---- 3
-			vertices[vi++] = { {cosf(ax1) * radius,  height, sinf(ax1) * radius}, {cosf(ax1), 0, sinf(ax1)} }; // 1   |   ,' |
-			vertices[vi++] = { {cosf(ax2) * radius, -height, sinf(ax2) * radius}, {cosf(ax2), 0, sinf(ax2)} }; // 2   | ,'   |
-			vertices[vi++] = { {cosf(ax2) * radius,  height, sinf(ax2) * radius}, {cosf(ax2), 0, sinf(ax2)} }; // 3   0 ---- 2
+			vertices[vi++] = { { cax1 * radius, -height, sax1 * radius }, { cax1, 0, sax1 }, { 0, 0 }, { -sax1, 0, cax1, 1 } }; // 0   1 ---- 3
+			vertices[vi++] = { { cax1 * radius,  height, sax1 * radius }, { cax1, 0, sax1 }, { 0, 0 }, { -sax1, 0, cax1, 1 } }; // 1   |   ,' |
+			vertices[vi++] = { { cax2 * radius, -height, sax2 * radius }, { cax2, 0, sax2 }, { 0, 0 }, { -sax2, 0, cax2, 1 } }; // 2   | ,'   |
+			vertices[vi++] = { { cax2 * radius,  height, sax2 * radius }, { cax2, 0, sax2 }, { 0, 0 }, { -sax2, 0, cax2, 1 } }; // 3   0 ---- 2
 
 			indices[ii++] = sv + 3;
 			indices[ii++] = sv + 2;
@@ -366,22 +396,23 @@ capsule::capsule(float height, float radius, int edges) : geometric_primitive() 
 		}
 
 		for (int up = -1; up < 2; up += 2) {
+			float w = -static_cast<float>(up);
 			for (int vedge = 0; vedge < edges / 2; vedge++) {
-				float ay1 = (float)vedge / ((float)edges - 1) * DirectX::XM_PI;
-				float ay2 = (float)(vedge + 1) / ((float)edges - 1) * DirectX::XM_PI;
-
 				if (vedge == 0) {
 					/* Bottom */
 					int sv = vi; // start vertex
 
-					float x1y2 = sinf(ay2) * cosf(ax1);
-					float x2y2 = sinf(ay2) * cosf(ax2);
-					float y2   = up * cosf(ay2);
-					float z1y2 = sinf(ay2) * sinf(ax1);
-					float z2y2 = sinf(ay2) * sinf(ax2);
+					float ay2 = (float)(vedge + 1) / ((float)edges - 1) * DirectX::XM_PI;
+					float say2 = sinf(ay2);
 
-					vertices[vi++] = { {x1y2 * radius, up * height + y2 * radius, z1y2 * radius}, {x1y2, y2, z1y2} }; // 0
-					vertices[vi++] = { {x2y2 * radius, up * height + y2 * radius, z2y2 * radius}, {x2y2, y2, z2y2} }; // 1    0 > 1 > bottom 
+					float x1y2 = say2 * cax1;
+					float x2y2 = say2 * cax2;
+					float y2   = up * cosf(ay2);
+					float z1y2 = say2 * sax1;
+					float z2y2 = say2 * sax2;
+
+					vertices[vi++] = { { x1y2 * radius, up * height + y2 * radius, z1y2 * radius }, { x1y2, y2, z1y2 }, { 0, 0 }, { -sax1, 0, cax1, w } }; // 0
+					vertices[vi++] = { { x2y2 * radius, up * height + y2 * radius, z2y2 * radius }, { x2y2, y2, z2y2 }, { 0, 0 }, { -sax1, 0, cax2, w } }; // 1    0 > 1 > bottom 
 
 					if (up == -1) {
 						indices[ii++] = sv + 0;
@@ -396,27 +427,33 @@ capsule::capsule(float height, float radius, int edges) : geometric_primitive() 
 					
 				}
 				else {
+					int sv = vi; // start vertex
+
+					float ay1 = (float) vedge		/ ((float)edges - 1) * DirectX::XM_PI;
+					float ay2 = (float)(vedge + 1)	/ ((float)edges - 1) * DirectX::XM_PI;
+
 					if (vedge == edges / 2 - 1 && !(edges % 2)) {
 						ay2 = DirectX::XM_PIDIV2;
 					}
 
-					int sv = vi; // start vertex
+					float say1 = sinf(ay1);
+					float say2 = sinf(ay2);
 
-					float x1y1 = sinf(ay1) * cosf(ax1);
-					float x2y1 = sinf(ay1) * cosf(ax2);
-					float x1y2 = sinf(ay2) * cosf(ax1);
-					float x2y2 = sinf(ay2) * cosf(ax2);
+					float x1y1 = say1 * cax1;
+					float x2y1 = say1 * cax2;
+					float x1y2 = say2 * cax1;
+					float x2y2 = say2 * cax2;
 					float y1   = up * cosf(ay1);
 					float y2   = up * cosf(ay2);
-					float z1y1 = sinf(ay1) * sinf(ax1);
-					float z2y1 = sinf(ay1) * sinf(ax2);
-					float z1y2 = sinf(ay2) * sinf(ax1);
-					float z2y2 = sinf(ay2) * sinf(ax2);
+					float z1y1 = say1 * sax1;
+					float z2y1 = say1 * sax2;
+					float z1y2 = say2 * sax1;
+					float z2y2 = say2 * sax2;
 
-					vertices[vi++] = { {x1y1 * radius, up * height + y1 * radius, z1y1 * radius}, {x1y1, y1, z1y1} }; // 0   1 ---- 3
-					vertices[vi++] = { {x1y2 * radius, up * height + y2 * radius, z1y2 * radius}, {x1y2, y2, z1y2} }; // 1   |   ,' |
-					vertices[vi++] = { {x2y1 * radius, up * height + y1 * radius, z2y1 * radius}, {x2y1, y1, z2y1} }; // 2   | ,'   |
-					vertices[vi++] = { {x2y2 * radius, up * height + y2 * radius, z2y2 * radius}, {x2y2, y2, z2y2} }; // 3   0 ---- 2
+					vertices[vi++] = { { x1y1 * radius, up * height + y1 * radius, z1y1 * radius }, { x1y1, y1, z1y1 }, { 0, 0 }, { -sax1, 0, cax1, w } }; // 0   1 ---- 3
+					vertices[vi++] = { { x1y2 * radius, up * height + y2 * radius, z1y2 * radius }, { x1y2, y2, z1y2 }, { 0, 0 }, { -sax1, 0, cax1, w } }; // 1   |   ,' |
+					vertices[vi++] = { { x2y1 * radius, up * height + y1 * radius, z2y1 * radius }, { x2y1, y1, z2y1 }, { 0, 0 }, { -sax2, 0, cax2, w } }; // 2   | ,'   |
+					vertices[vi++] = { { x2y2 * radius, up * height + y2 * radius, z2y2 * radius }, { x2y2, y2, z2y2 }, { 0, 0 }, { -sax2, 0, cax2, w } }; // 3   0 ---- 2
 
 					if (up == -1) {
 						indices[ii++] = sv + 3;
@@ -439,7 +476,6 @@ capsule::capsule(float height, float radius, int edges) : geometric_primitive() 
 			}
 		}
 	}
-
 
 	assert(vertex_count == vi);
 	assert(index_count == ii);

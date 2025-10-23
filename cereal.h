@@ -4,12 +4,15 @@
 #include <cereal/types/base_class.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/types/vector.hpp>
+#include <cereal/types/array.hpp>
 #include <cereal/types/set.hpp>
 #include <cereal/types/unordered_map.hpp>
 
 #define NVP(obj, name) cereal::make_nvp(#name, obj.name)
-#define SERIALIZE(...) template <class Ar> inline void serialize(Ar& ar) { ar(__VA_ARGS__); }
-#define SERIALIZE_BASE(base, ...) template <class Ar> inline void serialize(Ar& ar) { ar(cereal::base_class<base>(this)); ar(__VA_ARGS__); }
+#define SERIALIZE(...)		template <class Ar> inline void serialize(Ar& ar) { ar(__VA_ARGS__); }
+#define SERIALIZE_EMPTY()	template <class Ar> inline void serialize(Ar& ar) { }
+#define SERIALIZE_BASE(base, ...)	template <class Ar> inline void serialize(Ar& ar) { ar(cereal::base_class<base>(this)); ar(__VA_ARGS__); }
+#define SERIALIZE_EMPTY_BASE(base)	template <class Ar> inline void serialize(Ar& ar) { ar(cereal::base_class<base>(this)); }
 
 #define CONSTRUCT(type, ...)										\
 namespace cereal {													\

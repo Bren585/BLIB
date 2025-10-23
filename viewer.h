@@ -5,6 +5,13 @@
 #include <wrl.h>
 
 #define LIGHT_DEFAULT				{ -0.5f, -0.5f, -0.5f }
+#define LIGHT_COLOR_DEFAULT			color WHITE
+#define LIGHT_INTENSITY_DEFAULT		3
+#define LIGHT_INTENSITY_MAX			10
+
+#define AMBIENT_COLOR_DEFAULT		color WHITE
+#define AMBIENT_INTENSITY_DEFAULT	1
+#define AMBIENT_INTENSITY_MAX		10
 
 #define P_EYE_DEFAULT				{ 0.0f, 0.0f, -10.0f }
 #define P_FOCUS_DEFAULT				{ 0.0f, 0.0f, 0.0f }
@@ -22,15 +29,31 @@ namespace BLIB {
 		struct scene_constants {
 			float4x4 view_projection;
 			float4 light_direction;
+			float4 light_color;
+			float4 ambient_color;
 			float4 camera_position;
 		};
 
 		void init();
 		void uninit();
 
-		float3 get_light();
-		void set_light(float3 pos);
-		void add_light(float3 pos);
+		float3	get_light				();
+		color	get_light_color			();
+		float	get_light_intensity		();
+		color	get_ambient_color		();
+		float	get_ambient_intensity	();
+
+		void	set_light				(float3 pos);
+		void	set_light_color			(color c);
+		void	set_light_intensity		(float v);
+		void	set_ambient_color		(color c);
+		void	set_ambient_intensity	(float v);
+
+		void	add_light				(float3 pos);
+		void	add_light_color			(color c);
+		void	add_light_intensity		(float v);
+		void	add_ambient_color		(color c);
+		void	add_ambient_intensity	(float v);
 
 	}
 

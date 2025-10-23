@@ -164,6 +164,9 @@
     <ClCompile Include="shape.cpp">
       <Filter>source\debug shapes</Filter>
     </ClCompile>
+    <ClCompile Include="materials.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -331,6 +334,9 @@
     <ClInclude Include="camera_rig.h">
       <Filter>headers</Filter>
     </ClInclude>
+    <ClInclude Include="materials.h">
+      <Filter>headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="geometric_primitive_vs.hlsl">
@@ -357,6 +363,24 @@
     <FxCompile Include="debug_shapes_ps.hlsl">
       <Filter>shaders\ps</Filter>
     </FxCompile>
+    <FxCompile Include="bump_to_norm_ps.hlsl">
+      <Filter>shaders\ps</Filter>
+    </FxCompile>
+    <FxCompile Include="orm_compression.hlsl">
+      <Filter>shaders\ps</Filter>
+    </FxCompile>
+    <FxCompile Include="test_normal_ps.hlsl">
+      <Filter>shaders\ps</Filter>
+    </FxCompile>
+    <FxCompile Include="test_tangent_ps.hlsl">
+      <Filter>shaders\ps</Filter>
+    </FxCompile>
+    <FxCompile Include="test_bitangent_ps.hlsl">
+      <Filter>shaders\ps</Filter>
+    </FxCompile>
+    <FxCompile Include="test_tbn_ps.hlsl">
+      <Filter>shaders\ps</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="flat_common.hlsli">
@@ -372,6 +396,9 @@
       <Filter>shaders\hlsli</Filter>
     </None>
     <None Include="debug_shapes.hlsli">
+      <Filter>shaders\hlsli</Filter>
+    </None>
+    <None Include="math_constants.hlsli">
       <Filter>shaders\hlsli</Filter>
     </None>
   </ItemGroup>

@@ -5,9 +5,8 @@
 #include <vector>
 #include <map>
 
-#include "math.h"
+#include "materials.h"
 #include "render_settings.h"
-#include "string.h"
 
 // IF THESE CONSTANTS ARE CHANGED THEY MUST BE UPDATED IN THE SHADERS
 #define MAX_BONE_INF	4
@@ -75,27 +74,6 @@ namespace BLIB {
 		}
 
 		SERIALIZE(bones)
-	};
-
-	struct material {
-		enum {
-			texture,
-			normal,
-			ORM,
-			emissive
-		};
-
-		uint64_t	unique_id{ 0 };
-		string		name;
-
-		color Ka{ 0.2f, 0.2f, 0.2f, 1.0f };
-		color Kd{ 0.8f, 0.8f, 0.8f, 1.0f };
-		color Ks{ 1.0f, 1.0f, 1.0f, 1.0f };
-
-		string												texture_filenames[4];
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	shader_resource_views[4];
-
-		SERIALIZE(unique_id, name, Ka, Kd, Ks, texture_filenames)
 	};
 
 	struct mesh {
@@ -227,12 +205,12 @@ namespace BLIB {
 
 		Microsoft::WRL::ComPtr<ID3D11Buffer>	constant_buffer;
 
-		std::vector<mesh>						meshes;
-		std::unordered_map<uint64_t, material>	materials;
-		std::vector<animation>					animations;
-		coordinate_system						coord_sys;
-		string									vs_cso;
-		std::vector<D3D11_INPUT_ELEMENT_DESC>	input_element_desc;
+		std::vector<mesh>								meshes;
+		std::unordered_map<uint64_t, material>			materials;
+		std::vector<animation>							animations;
+		coordinate_system								coord_sys;
+		string											vs_cso;
+		std::vector<D3D11_INPUT_ELEMENT_DESC>			input_element_desc;
 
 		void create_shaders(std::string cso);
 
@@ -259,6 +237,10 @@ namespace BLIB {
 
 		const animation::keyframe* get_keyframe() const;
 
+		// Textures
+
+		void force_reload_textures() { for (auto& material : materials) { material.second.force_construct(); } }
+
 		// Physics / Collision
 
 		inline virtual float3 get_size() const = 0;
@@ -279,7 +261,7 @@ namespace BLIB {
 	model* create_capsule(float height = 0.5f, float radius = 0.5f);
 	model* create_quad();
 
-	void load_texture(model* dest, const wchar_t* filename, float3* out_aspect = nullptr);
+	void load_texture(model* dest, const string filename, texture_type slot = texture_map, float3* out_aspect = nullptr);
 
 	class sprite;
 	void copy_texture(model* dest, const sprite* spr, float3* out_aspect = nullptr);

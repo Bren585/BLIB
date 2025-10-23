@@ -1,11 +1,11 @@
 #include "full_ps.hlsli"
 
-SamplerState samplers       : register(s0);
-SamplerState pixel_sampler  : register(s1);
-Texture2D texture_map       : register(t0);
-Texture2D normal_map        : register(t1);
-Texture2D orm_map           : register(t2);
-Texture2D emissive_map      : register(t3);
+SamplerState samplers : register(s0);
+SamplerState pixel_sampler : register(s1);
+Texture2D texture_map : register(t0);
+Texture2D normal_map : register(t1);
+Texture2D orm_map : register(t2);
+Texture2D emissive_map : register(t3);
 
 float4 main(VS_OUT pin) : SV_TARGET
 {
@@ -36,7 +36,8 @@ float4 main(VS_OUT pin) : SV_TARGET
         T = normalize(T - N * dot(N, T));
         float3 B = normalize(cross(N, T)) * pin.world_tangent.w; // Bitangent
         float3 n = normal_map.Sample(pixel_sampler, pin.texcoord).rgb * 2 - 1; // Surface Normal
-        N = normalize((n.x * T) + (n.y * B) + (n.z * N));
+        N = normalize((n.r * T) + (n.g * B) + (n.b * N));
+        return float4(N * 0.5 + 0.5, 1);
     }
     
     /* Precalcs ******************************************************************************/
@@ -55,7 +56,7 @@ float4 main(VS_OUT pin) : SV_TARGET
     
     float D; // Distribution
     {
-        float a = R * R;
+        float a = pow(R, 4.0);
         float d = (NdotH * NdotH) * (a - 1.0) + 1.0;
         D = a / (PI * d * d);
     }
@@ -81,21 +82,25 @@ float4 main(VS_OUT pin) : SV_TARGET
         specular = n / d;
     }
     
-    /* Shine    ******************************************************************************/
-    
-    float3 S = O * albedo.rgb / PI; // Shine
-    
     /* Diffuse  ******************************************************************************/
     
-    float3 diffuse = (1.0 - F) * (1.0 - M); // Diffuse
+    float3 diffuse; // Diffuse
+    {
+        float3 kd = (1.0 - F) * (1.0 - M);
+        diffuse = kd * albedo.rgb / PI;
+    }
     
     /* Lighting ******************************************************************************/
     
-    float3 direct_radiance = light_color.rgb * light_intensity;
-    float3 direct_lighting = (diffuse * S + specular) * direct_radiance * NdotL;
-    float3 ambient_radiance = ambient_color.rgb * ambient_intensity;
-    float3 ambient_lighting = ambient_radiance * S;
-    float3 total_lighting = direct_lighting + ambient_lighting + (E.rgb * E.a);
+    float3 radiance = light_color.rgb * light_intensity;
+    float3 lighting = (diffuse * O + specular) * radiance * NdotL;
+    lighting = lighting + (E.rgb * E.a);
     
-    return float4(saturate(total_lighting), albedo.a);
+    //return float4(pin.world_position.xyz, 1); // good gradients
+    //return float4(albedo.rgb, 1); // albedo is correct
+    //return float4((N.xyz * 0.5 + 0.5), 1); // black
+    //return float4(ORM.xyz, 1); // pink
+    //return float4(normalize(pin.world_normal.xyz), 1); // Good
+    
+    return float4(saturate(lighting), albedo.a);
 }

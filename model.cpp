@@ -195,12 +195,12 @@ namespace BLIB {
 	model* create_capsule	(float height, float radius)	{ return new capsule	(height, radius, primitive_detail); }
 	model* create_quad		()								{ return new quad;											}
 
-	void load_texture(model* dest, const wchar_t* filename, float3* out_aspect) {
+	void load_texture(model* dest, const string filename, texture_type slot, float3* out_aspect) {
 		geometric_primitive* primitive = dynamic_cast<geometric_primitive*>(dest);
 		if (primitive) {
-			D3D11_TEXTURE2D_DESC image_desc;
-			primitive->load_texture(filename, &image_desc);
-			float aspect = (float)image_desc.Width / (float)image_desc.Height;
+			primitive->load_texture(filename, slot);
+			float2 size = primitive->get_texture(slot)->data->get_size();
+			float aspect = size.x / size.y;
 			if (out_aspect) *out_aspect = { aspect, 1, 1 };
 		}
 	}
@@ -247,7 +247,7 @@ namespace BLIB {
 		{
 			UNCEREAL(filename, out);
 		}
-		out->create_com_objects(filename);
+		out->create_com_objects();
 		//out->animator.set_hierarchy(out->scene_view.hierarchy);
 		return out.release();
 	}

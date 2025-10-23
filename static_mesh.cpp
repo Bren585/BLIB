@@ -125,11 +125,6 @@ static_mesh::static_mesh(const string& obj_filename, bool uv_inverse = false) {
 
 		create_buffers();
 	}
-	
-
-	/* Bounding Box */ {
-		bounding_box = new custom_cube(minimum, maximum);
-	}
 
 	/* Subset Range Cleanup */ {
 		std::vector<subset>::reverse_iterator rit = subsets.rbegin();
@@ -140,7 +135,9 @@ static_mesh::static_mesh(const string& obj_filename, bool uv_inverse = false) {
 	}
 
 	uint32_t material_index = -1;
-	/* Material Data Loading */ {
+	std::unordered_map<int, phong> phong_mats;
+
+	/* Phong Material Data Loading */ {
 		const string filepath = obj_filename.get_filepath();
 		const string mtl_filename = filepath + mtl_filenames[0].get_filename();
 
@@ -154,7 +151,7 @@ static_mesh::static_mesh(const string& obj_filename, bool uv_inverse = false) {
 				wchar_t map_Kd[256];
 				fin >> map_Kd;
 				
-				materials[material_index].texture_filenames[0] = filepath + string(map_Kd).get_filename();
+				phong_mats[material_index].texture_filenames[0] = filepath + string(map_Kd).get_filename();
 				fin.ignore(1024, L'\n');
 			}
 			else if (0 == wcscmp(command, L"map_bump") || 0 == wcscmp(command, L"bump")) {
@@ -162,21 +159,21 @@ static_mesh::static_mesh(const string& obj_filename, bool uv_inverse = false) {
 				wchar_t map_bump[256];
 				fin >> map_bump;
 
-				materials[material_index].texture_filenames[1] = filepath + string(map_bump).get_filename();
+				phong_mats[material_index].texture_filenames[1] = filepath + string(map_bump).get_filename();
 				fin.ignore(1024, '\n');
 			}
 			else if (0 == wcscmp(command, L"newmtl")) {
 				fin.ignore();
 				wchar_t newmtl[256];
-				material material;
+				phong material;
 				fin >> newmtl;
 				material.name = newmtl;
-				materials.insert(std::make_pair(++material_index, material));
+				phong_mats.insert(std::make_pair(++material_index, material));
 			}
 			else if (0 == wcscmp(command, L"Kd")) {
 				float r, g, b;
 				fin >> r >> g >> b;
-				materials[material_index].Kd = { r, g, b, 1 };
+				phong_mats[material_index].Kd = { r, g, b, 1 };
 				fin.ignore(1204, L'\n');
 			}
 			else {
@@ -185,36 +182,43 @@ static_mesh::static_mesh(const string& obj_filename, bool uv_inverse = false) {
 		}
 		fin.close();
 
-		if (materials.size() == 0) {
+		if (phong_mats.size() == 0) {
 			for (const subset& subset : subsets) {
-				material new_material;
+				phong new_material;
 				new_material.name = subset.material_name;
-				materials.insert(std::make_pair(++material_index, new_material));
+				phong_mats.insert(std::make_pair(++material_index, std::move(new_material)));
 			}
 		}
 	}
 
-	/* Material Texture Loading */ {
-		D3D11_TEXTURE2D_DESC texture2d_desc{};
+	/* Material Texture Loading And PBR Conversion*/ {
 		for (uint32_t i = 0; i < material_index; i++) {
-			material& material = materials[i];
-			if (material.texture_filenames[0] != "") {
-				texture::load_file(material.texture_filenames[0].wide(), material.shader_resource_views[0].GetAddressOf(), &texture2d_desc);
-			}
-			else { texture::make_dummy(material.shader_resource_views[0].GetAddressOf(), WHITE, 16); }
+			phong& phong_mtl = phong_mats[i];
+			material pbr_mtl;
 
-			if (material.texture_filenames[1] != "") {
-				texture::load_file(material.texture_filenames[1].wide(), material.shader_resource_views[1].GetAddressOf(), &texture2d_desc);
+			if (phong_mtl.texture_filenames[texture_type::texture_map] != "") {
+				pbr_mtl.textures[texture_type::texture_map] = std::make_unique<material_texture_file>(phong_mtl.texture_filenames[texture_type::texture_map]);
 			}
-			else { texture::make_dummy(material.shader_resource_views[1].GetAddressOf(), 0xFFFF7F7F, 16); }
+
+			if (phong_mtl.texture_filenames[texture_type::normal_map] != "") {
+				pbr_mtl.textures[texture_type::normal_map] = std::make_unique<material_texture_file>(phong_mtl.texture_filenames[texture_type::normal_map]);
+			}
+
+			construct_pbr_from_phong(&pbr_mtl, phong_mtl.Ka, phong_mtl.Kd, phong_mtl.Ks);
+			pbr_mtl.construct();
+
+			pbr_mtl.unique_id	= phong_mtl.unique_id;
+			pbr_mtl.name		= phong_mtl.name;
+
+			materials.emplace(pbr_mtl.unique_id, std::move(pbr_mtl));
 		}
 	}
 
 	input_element_desc = {
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"NORMAL",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TANGENT",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 
 	create_shaders("static_mesh");
@@ -233,10 +237,9 @@ void static_mesh::render(const float4x4& world, const color& material_color) con
 	for (const auto& material_pair : materials) {
 		const material& material{ material_pair.second };
 
-		device::context()->PSSetShaderResources(0, 1, material.shader_resource_views[0].GetAddressOf());
-		device::context()->PSSetShaderResources(1, 1, material.shader_resource_views[1].GetAddressOf());
+		material.bind(0);
 
-		constants data{ world, material.Kd * material_color };
+		constants data{ world, material_color };
 		device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
 		device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
 
@@ -249,13 +252,8 @@ void static_mesh::render(const float4x4& world, const color& material_color) con
 }
 
 void static_mesh::render_bounds(const float4x4& world, const color& material_color) {
-	if (bounding_box) {
-		((model*)bounding_box)->render(world, material_color);
-	}
+	if (!bounding_box) bounding_box.reset(create_cube(minimum, maximum)); 
+	bounding_box->render(world, material_color);
 }
 
-static_mesh::~static_mesh() {
-	if (bounding_box) {
-		delete bounding_box;
-	}
-}
+static_mesh::~static_mesh() { }

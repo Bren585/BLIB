@@ -20,11 +20,13 @@ namespace BLIB {
 			full_filename	= 1 << 0,
 			make_buffer		= 1 << 1,
 			load_texture	= 1 << 2,
+			load_shaders	= 1 << 3,
 
-			batch_flags		= load_texture,
-			dummy_flags		= make_buffer,
-			font_flags		= full_filename | load_texture,
-			default_flags	= make_buffer	| load_texture
+			dummy_flags		= load_shaders | make_buffer,
+			canvas_flags	= load_shaders | make_buffer,
+			batch_flags		= load_shaders | load_texture,
+			font_flags		= load_shaders | load_texture	| full_filename,
+			default_flags	= load_shaders | make_buffer	| load_texture
 		};
 
 	private:
@@ -32,24 +34,28 @@ namespace BLIB {
 		static float2	viewport;
 		static string	filepath;
 
-		void create_buffer();
-
 	protected:
 		string												vs_cso					= "sprite";
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				vertex_buffer;
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	shader_resource_view;
-		D3D11_TEXTURE2D_DESC								texture2d_desc;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	shader_resource_view	= nullptr;
+		D3D11_TEXTURE2D_DESC								texture2d_desc{};
 
 	public:
 		sprite(flags flags, const string& filename = "");
 		sprite(const string& filename) : sprite(default_flags, filename) {}
 		sprite(color c, float2 size);
 		sprite(const sprite&) = delete;
+		sprite(sprite&&) = default;
 		~sprite() {}
+
+		void create_buffer();
+		void load_shader();
+		void load_file(const string& filename, bool full_filepath);
 
 		sprite* clone() const;
 
-		ID3D11ShaderResourceView**								SRV_copy_dest	()			{ return shader_resource_view.Get() ? shader_resource_view.ReleaseAndGetAddressOf() : shader_resource_view.GetAddressOf(); }
+		ID3D11ShaderResourceView**								get_release_SRV	()			{ return shader_resource_view.Get() ? shader_resource_view.ReleaseAndGetAddressOf() : shader_resource_view.GetAddressOf(); }
+		ID3D11ShaderResourceView**								get_SRV			()			{ return shader_resource_view.Get() ? shader_resource_view.GetAddressOf()			: nullptr; }
 		const Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& peek_SRV		() const	{ return shader_resource_view; }
 
 		static void		set_y_invert(bool invert)	{ y_invert = invert; }

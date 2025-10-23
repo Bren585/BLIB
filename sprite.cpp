@@ -10,6 +10,8 @@ float2	sprite::viewport = {};
 string	sprite::filepath = "-1";
 
 void sprite::create_buffer() {
+	if (vertex_buffer) return;
+
 	vertex vertices[]
 	{
 		{ { -1.0, +1.0, 0 }, { 1, 1, 1, 1 }, {0, 0} },
@@ -32,11 +34,7 @@ void sprite::create_buffer() {
 	HRESULT hr = device::get()->CreateBuffer(&buffer_desc, &subresource_data, vertex_buffer.GetAddressOf()); VERIFY;
 }
 
-sprite::sprite(flags flags, const string& filename) {
-	HRESULT hr{ S_OK };
-
-	if (flags & make_buffer) { create_buffer(); }
-
+void sprite::load_shader() {
 	D3D11_INPUT_ELEMENT_DESC input_element_desc[]{
 		{ "POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -44,19 +42,22 @@ sprite::sprite(flags flags, const string& filename) {
 	};
 
 	shader::load_flat(vs_cso, input_element_desc, _countof(input_element_desc));
-
-	if (flags & load_texture) {
-		string full_filepath = filename;
-		if (!(flags & full_filename)) { _ASSERT_EXPR_A(filepath != "-1", "Must Set Filepath"); full_filepath = filepath + filename; }
-		hr = texture::load_file(full_filepath, shader_resource_view.GetAddressOf(), &texture2d_desc); VERIFY;
-	}
-	else {
-		texture2d_desc = D3D11_TEXTURE2D_DESC{};
-		shader_resource_view = nullptr;
-	}
 }
 
-sprite::sprite(color c, float2 size) : sprite(make_buffer) {
+void sprite::load_file(const string& filename, bool full_filepath) {
+	if (shader_resource_view) return;
+	string full_filename = filename;
+	if (!full_filepath) { _ASSERT_EXPR_A(filepath != "-1", "Must Set Filepath"); full_filename = filepath + filename; }
+	texture::load_file(full_filepath, shader_resource_view.GetAddressOf(), &texture2d_desc);
+}
+
+sprite::sprite(flags flags, const string& filename) {
+	if (flags & make_buffer		) { create_buffer();								}
+	if (flags & load_shaders	) { load_shader();									}
+	if (flags & load_texture	) { load_file(filename, (flags & full_filename));	}
+}
+
+sprite::sprite(color c, float2 size) : sprite(dummy_flags) {
 	texture::make_dummy(shader_resource_view.GetAddressOf(), c, size);
 	resize(size);
 }

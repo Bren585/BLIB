@@ -11,16 +11,42 @@ namespace BLIB {
 		void init() {
 			main_camera = std::make_unique<perspective_camera>();
 			set_light(LIGHT_DEFAULT);
+			set_light_color(LIGHT_COLOR_DEFAULT);
+			set_light_intensity(LIGHT_INTENSITY_DEFAULT);
+			set_ambient_color(AMBIENT_COLOR_DEFAULT);
+			set_ambient_intensity(AMBIENT_INTENSITY_DEFAULT);
 			set_main();
 		}
 
 		void uninit() { }
 
 		float3	light;
-		float3	get_light()				{ return light; }
-		void	set_light(float3 pos)	{ light  = pos;	}
-		void	add_light(float3 pos)	{ light += pos;	}
+		color	light_color;
+		float	light_intensity;
 
+		float3	get_light			()				{ return light; }
+		color	get_light_color		()				{ return light_color; }
+		float	get_light_intensity	()				{ return light_intensity; }
+
+		void	set_light			(float3 pos)	{ light  = pos;	}
+		void	set_light_color		(color c)		{ light_color = c; }
+		void	set_light_intensity (float v)		{ light_intensity = clamp(0, v, LIGHT_INTENSITY_MAX); }
+		
+		void	add_light			(float3 pos)	{ light += pos;	}
+		void	add_light_color		(color c)		{ set_light_color(light_color.rgb() + c.rgb()); }
+		void	add_light_intensity (float v)		{ set_light_intensity(light_intensity + v); }
+
+		color ambient_color;
+		float ambient_intensity;
+
+		color	get_ambient_color		()			{ return ambient_color; }
+		float	get_ambient_intensity	()			{ return ambient_intensity; }
+
+		void	set_ambient_color		(color c)	{ ambient_color = c; }
+		void	set_ambient_intensity	(float v)	{ ambient_intensity = clamp(0, v, AMBIENT_INTENSITY_MAX); }
+
+		void	add_ambient_color		(color c)	{ set_ambient_color(ambient_color.rgb() + c.rgb()); }
+		void	add_ambient_intensity	(float v)	{ set_ambient_intensity(ambient_intensity + v); }
 
 		void set_active(camera* cam) {
 			active_camera = cam;
@@ -51,6 +77,8 @@ namespace BLIB {
 
 	void camera::bind() const {
 		data.light_direction = { viewer::get_light(), 0 };
+		data.light_color = { viewer::get_light_color().rgb(), viewer::get_light_intensity() };
+		data.ambient_color = { viewer::get_ambient_color().rgb(), viewer::get_ambient_intensity() };
 		DirectX::XMStoreFloat4x4(&data.view_projection, get_view_projection());
 		data.camera_position = { eye, 0 };
 		RENDER_LOCK;

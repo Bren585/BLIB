@@ -51,7 +51,7 @@ namespace BLIB {
 
 			size_t texels = texture2d_desc.Width * texture2d_desc.Height;
 			std::unique_ptr<hex_rgba[]> sysmem{ std::make_unique<hex_rgba[]>(texels) };
-			for (size_t i = 0; i < texels; i++) { sysmem[i] = value; }
+			for (size_t i = 0; i < texels; i++) { sysmem[i] = value.abgr(); }
 
 			D3D11_SUBRESOURCE_DATA subresource_data{};
 			subresource_data.pSysMem = sysmem.get();

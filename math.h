@@ -363,9 +363,10 @@ class color {
 public:
 	float r, g, b, a;
 
-	color()						: r(1),		g(1),	b(1),	a(1)	{}
-	color(DirectX::XMFLOAT4 c)	: r(c.x),	g(c.y), b(c.z), a(c.w)	{}
-	color(float r, float g, float b, float a = 1.0f) : r(clamp(0, r, 1)), g(clamp(0, g, 1)), b(clamp(0, b, 1)), a(clamp(0, a, 1)) {}
+	color()												: r(1),					g(1),				b(1),				a(1)	{}
+	color(float r, float g, float b, float a = 1.0f)	: r(clamp(0, r, 1)),	g(clamp(0, g, 1)),	b(clamp(0, b, 1)),	a(clamp(0, a, 1)) {}
+	color(DirectX::XMFLOAT4 c)							: color(c.x, c.y, c.z, c.w)	{}
+	color(float3 rgb, float a = 1.0f)					: color(rgb.x, rgb.y, rgb.z, a) {}
 	color(hex_rgba hex) : 
 		r(((hex >> 24) & 0xff) / 255.0f), 
 		g(((hex >> 16) & 0xff) / 255.0f), 
@@ -381,6 +382,9 @@ public:
 		((int(b * 255) & 0xff) << 8 ) |
 		((int(a * 255) & 0xff)); 
 	}
+
+	inline float3 rgb() const { return { r, g, b }; }
+	inline color abgr() const { return { a, b, g, r }; }
 
 	SERIALIZE(r, g, b, a)
 };

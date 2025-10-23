@@ -6,26 +6,26 @@
 using namespace BLIB;
 
 canvas::canvas(float2 size) : view(size) {
-	set_sprite(new sprite(sprite::make_buffer));
-	view.copy_SRV_to(peek_sprite()->SRV_copy_dest());
+	set_sprite(new sprite(sprite::canvas_flags));
+	view.copy_SRV_to(peek_sprite()->get_release_SRV());
 	peek_sprite()->resize(size);
 	object::size = size;
 }
 
 void canvas::resize(float2 size) {
 	view.resize(size);
-	view.copy_SRV_to(peek_sprite()->SRV_copy_dest());
+	view.copy_SRV_to(peek_sprite()->get_release_SRV());
 	peek_sprite()->resize(size);
 	object::size = size;
 }
 
 void canvas::clear() { RENDER_LOCK; view.clear(background); }
 
-void canvas::draw(renderable* r) {
+void canvas::draw(renderable* r, render_settings rs) {
 	if (!r) return;
 	RENDER_LOCK;
 	focus();
-	r->render({});
+	r->render(rs);
 }
 
 float canvas::type(string s, float2 pos, float2 size, font_name font, color color, float2 align) {
@@ -60,8 +60,7 @@ void canvas::snapshot_to_sprite(sprite* target) {
 	hr = device::get()->CreateShaderResourceView(out_texture, nullptr, &out_srv); VERIFY;
 	out_texture->Release();
 
-	ID3D11ShaderResourceView** target_srv = target->SRV_copy_dest();
-	if (*target_srv) { (*target_srv)->Release(); }
+	ID3D11ShaderResourceView** target_srv = target->get_release_SRV();
 	*target_srv = out_srv;
 
 	target->resize({ (float)desc.Width, (float)desc.Height });

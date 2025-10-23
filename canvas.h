@@ -17,7 +17,7 @@ namespace BLIB {
 		void resize(float2 size);
 		float2 get_size() const { return view.get_size(); }
 
-		void draw(renderable* r);
+		void draw(renderable* r, render_settings rs = {});
 
 		float type(string s, float2 pos, float2 size, font_name font = FONT_DEFAULT, color color = { 1.0f, 1.0f, 1.0f, 1.0f }, float2 align = { -1, -1 });
 

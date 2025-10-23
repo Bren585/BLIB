@@ -4,9 +4,9 @@
 
 using namespace BLIB;
 
-void billboard::set_texture(const wchar_t* filename) {
+void billboard::set_texture(const string filename) {
 	float3 scale;
-	load_texture(get_model(), filename, &scale);
+	load_texture(get_model(), filename, texture_map, &scale);
 	set_scl(scale);
 }
 
