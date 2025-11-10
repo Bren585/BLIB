@@ -32,7 +32,7 @@ private:
 			hr = get()->QueryInterface(IID_ID3D11InfoQueue, (void**)(instance().info_queue.GetAddressOf())); VERIFY;
 
 			instance().info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
-			instance().info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, TRUE);
+			instance().info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, FALSE);
 			instance().info_queue->AddStorageFilterEntries(nullptr);
 		}
 #endif
@@ -91,8 +91,12 @@ public:
 
 class annotator {
 public:
-	annotator(const wchar_t* note) { device::begin_note(note); }
+	annotator(const string note) { device::begin_note(note); }
 	~annotator() { device::end_note(); }
 };
 
-#define ANNOTATE(msg) annotator _(msg);
+#ifdef _DEBUG
+#define annotate(msg) annotator _an(msg)
+#else 
+#define annotate(msg)
+#endif

@@ -4,22 +4,22 @@
 
 namespace BLIB {
 
-	class transition_scene : public scene {
+	class transition_scene : public flat::scene {
 	private:
-		scene* to_scene;
-		scene* from_scene;
+		generic::scene* to_scene;
+		generic::scene* from_scene;
 
 		scene_id to_scene_id = 0;
 		scene_id from_scene_id = 0;
 
-		int slot;
+		const int slot;
 
-		transition t;
+		const transition t;
 
-		float duration;
+		const float duration;
 
 	public:
-		transition_scene(scene* to, scene* from, int slot, transition t, float duration) : to_scene(to), from_scene(from), slot(slot), t(t), duration(duration) { assert(t != transition::none && (to || from)); to_scene->preserve(); from_scene->preserve(); }
+		transition_scene(generic::scene* to, generic::scene* from, int slot, transition t, float duration) : to_scene(to), from_scene(from), slot(slot), t(t), duration(duration) { assert(t != transition::none && (to || from)); to_scene->preserve(); from_scene->preserve(); }
 
 		void init() override {
 			if (to_scene)	{ to_scene_id	= to_scene->get_id();	}
@@ -32,13 +32,13 @@ namespace BLIB {
 		void update	(float elapsed_time)	override { if (timer > duration) {state = complete;} }
 		void idle	(float elapsed_time)	override {}
 
-		void draw() override {
+		void draw(render_settings) const override {
 			switch (t) {
 			case transition::none:
 				if (to_scene) { to_scene->render(); }
 				break;
 			case transition::fade:
-				scene* fade_scene = to_scene ? to_scene : from_scene;
+				generic::scene* fade_scene = to_scene ? to_scene : from_scene;
 				fade_scene->tint.a = clamp(0.0f, timer / duration, 1.0f);
 
 				if (from_scene) { from_scene->render(); }

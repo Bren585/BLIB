@@ -1,4 +1,5 @@
 #include "full_ps.hlsli"
+#include "lighting.hlsli"
 
 SamplerState samplers       : register(s0);
 SamplerState pixel_sampler  : register(s1);
@@ -7,8 +8,9 @@ Texture2D normal_map        : register(t1);
 Texture2D orm_map           : register(t2);
 Texture2D emissive_map      : register(t3);
 
-float4 main(VS_OUT pin) : SV_TARGET
+PS_OUT main(VS_OUT pin)
 {
+    PS_OUT pout;
     /* Sampling ******************************************************************************/
     
     float4 albedo = texture_map.Sample(samplers, pin.texcoord) * pin.color;
@@ -24,7 +26,7 @@ float4 main(VS_OUT pin) : SV_TARGET
     
     /* Constants *****************************************************************************/
     
-    float3 L = normalize(-light_direction.xyz); // Light Direction
+    float3 L = normalize(-skylight_direction.xyz); // Light Direction
     float3 V = normalize(camera_position.xyz - pin.world_position.xyz); // View Direction
     float3 H = normalize(V + L);
         
@@ -91,11 +93,23 @@ float4 main(VS_OUT pin) : SV_TARGET
     
     /* Lighting ******************************************************************************/
     
-    float3 direct_radiance = light_color.rgb * light_intensity;
-    float3 direct_lighting = (diffuse * S + specular) * direct_radiance * NdotL;
+    float3 sky_radiance = skylight_color.rgb * skylight_intensity;
+    float3 sky_lighting = (diffuse * S + specular) * sky_radiance * NdotL;
+    
     float3 ambient_radiance = ambient_color.rgb * ambient_intensity;
     float3 ambient_lighting = ambient_radiance * S;
-    float3 total_lighting = direct_lighting + ambient_lighting + (E.rgb * E.a);
     
-    return float4(saturate(total_lighting), albedo.a);
+    float3 total_lighting = sky_lighting + ambient_lighting + (E.rgb * E.a);
+    
+    pout.slot0 = float4(saturate(total_lighting), albedo.a); // default pass
+    
+    pout.slot1 = float4(0, 0, 0, 0);
+    pout.slot2 = float4(0, 0, 0, 0);
+    pout.slot3 = float4(0, 0, 0, 0);
+    pout.slot4 = float4(0, 0, 0, 0);
+    pout.slot5 = float4(0, 0, 0, 0);
+    pout.slot6 = float4(0, 0, 0, 0);
+    pout.slot7 = float4(0, 0, 0, 0);
+    
+    return pout;
 }

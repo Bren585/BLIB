@@ -5,19 +5,13 @@
 
 using namespace BLIB;
 
-bool	sprite::y_invert = true;
-float2	sprite::viewport = {};
-string	sprite::filepath = "-1";
-
-void sprite::create_buffer() {
-	if (vertex_buffer) return;
-
-	vertex vertices[]
+void BLIB::make_quad_buffer(ID3D11Buffer** out) {
+	sprite::vertex vertices[]
 	{
-		{ { -1.0, +1.0, 0 }, { 1, 1, 1, 1 }, {0, 0} },
-		{ { +1.0, +1.0, 0 }, { 1, 1, 1, 1 }, {1, 0} },
-		{ { -1.0, -1.0, 0 }, { 1, 1, 1, 1 }, {0, 1} },
-		{ { +1.0, -1.0, 0 }, { 1, 1, 1, 1 }, {1, 1} },
+		{ { -1.0, +1.0, 0 }, {0, 0} },
+		{ { +1.0, +1.0, 0 }, {1, 0} },
+		{ { -1.0, -1.0, 0 }, {0, 1} },
+		{ { +1.0, -1.0, 0 }, {1, 1} },
 	};
 
 	D3D11_BUFFER_DESC buffer_desc{};
@@ -31,29 +25,50 @@ void sprite::create_buffer() {
 	subresource_data.pSysMem = vertices;
 	subresource_data.SysMemPitch = 0;
 	subresource_data.SysMemSlicePitch = 0;
-	HRESULT hr = device::get()->CreateBuffer(&buffer_desc, &subresource_data, vertex_buffer.GetAddressOf()); VERIFY;
+	HRESULT hr = device::get()->CreateBuffer(&buffer_desc, &subresource_data, out); VERIFY;
 }
 
-void sprite::load_shader() {
+bool	sprite::y_invert = true;
+float2	sprite::viewport = {};
+string	sprite::filepath = "-1";
+
+void sprite::create_vertex_buffer() {
+	if (vertex_buffer) return;
+	make_quad_buffer(vertex_buffer.GetAddressOf());
+}
+
+void sprite::create_constant_buffer() {
+	D3D11_BUFFER_DESC buffer_desc{};
+	buffer_desc.ByteWidth = sizeof(constants);
+	buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	buffer_desc.CPUAccessFlags = 0;
+	buffer_desc.MiscFlags = 0;
+	buffer_desc.StructureByteStride = 0;
+
+	HRESULT hr = device::get()->CreateBuffer(&buffer_desc, nullptr, constant_buffer.GetAddressOf()); VERIFY;
+}
+
+void sprite::load_shader(string vs) {
 	D3D11_INPUT_ELEMENT_DESC input_element_desc[]{
 		{ "POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "COLOR",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0}
+		{ "TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
 
-	shader::load_flat(vs_cso, input_element_desc, _countof(input_element_desc));
+	shader::load_flat(vs, input_element_desc, _countof(input_element_desc));
 }
 
 void sprite::load_file(const string& filename, bool full_filepath) {
 	if (shader_resource_view) return;
 	string full_filename = filename;
 	if (!full_filepath) { _ASSERT_EXPR_A(filepath != "-1", "Must Set Filepath"); full_filename = filepath + filename; }
-	texture::load_file(full_filepath, shader_resource_view.GetAddressOf(), &texture2d_desc);
+	texture::load_file(full_filename, shader_resource_view.GetAddressOf(), &texture2d_desc);
 }
 
 sprite::sprite(flags flags, const string& filename) {
-	if (flags & make_buffer		) { create_buffer();								}
-	if (flags & load_shaders	) { load_shader();									}
+	if (flags & make_vbuffer	) { create_vertex_buffer();							}
+	if (flags & make_cbuffer	) { create_constant_buffer();						}
+	if (flags & load_shaders	) { load_shader(SPRITE_VS);							}
 	if (flags & load_texture	) { load_file(filename, (flags & full_filename));	}
 }
 
@@ -64,7 +79,7 @@ sprite::sprite(color c, float2 size) : sprite(dummy_flags) {
 
 sprite* sprite::clone() const {
 	RENDER_LOCK;
-	sprite* spr = new sprite(make_buffer);
+	sprite* spr = new sprite(clone_flags);
 
 	if (shader_resource_view.Get()) {
 		HRESULT hr = { S_OK };
@@ -88,11 +103,7 @@ sprite* sprite::clone() const {
 	return spr;
 }
 
-bool sprite::create_vertices(vertex* vertex_out, float2 pos, float2 size, float2 tpos, float2 tsize, float angle, float2 center, color color) {
-	//D3D11_VIEWPORT dx_viewport{};
-	//UINT num_viewports{ 1 };
-	//device::context()->RSGetViewports(&num_viewports, &dx_viewport);
-
+bool sprite::create_vertices(vertex* vertex_out, float2 pos, float2 size, float2 tpos, float2 tsize, float angle, float2 center) {
 	if (y_invert) { pos.y = viewport.y - pos.y; size.y *= -1; }
 
 	bool xflip = size.x < 0;
@@ -124,7 +135,6 @@ bool sprite::create_vertices(vertex* vertex_out, float2 pos, float2 size, float2
 		corner[i].y = 1.0f - 2.0f * corner[i].y / viewport.y;
 
 		vertex_out[i].position = float3(corner[i], 0);
-		vertex_out[i].color = color;
 	}
 
 	tpos.x /= texture2d_desc.Width;
@@ -159,17 +169,18 @@ void sprite::render(
 
 	hr = device::context()->Map(vertex_buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource); VERIFY;
 	vertex* vertices{ reinterpret_cast<vertex*>(mapped_subresource.pData) };
-	if (vertices) { sucess = create_vertices(vertices, pos, size, tpos, tsize, angle, center, color); }
+	if (vertices) { sucess = create_vertices(vertices, pos, size, tpos, tsize, angle, center); }
 	device::context()->Unmap(vertex_buffer.Get(), 0);
 	if (!sucess) return;
 
+	constants data{ color };
+	device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
+	device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
+
 	UINT stride{ sizeof(vertex) };
 	UINT offset{ 0 };
-
 	device::context()->IASetVertexBuffers(0, 1, vertex_buffer.GetAddressOf(), &stride, &offset);
-
 	device::context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	shader::set_vs(vs_cso);
 
 	device::context()->PSSetShaderResources(0, 1, shader_resource_view.GetAddressOf());
 	device::context()->Draw(4, 0);

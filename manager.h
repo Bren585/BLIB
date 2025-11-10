@@ -9,7 +9,7 @@
 namespace BLIB {
 
 	class status;
-	class scene;
+	namespace generic { class scene; }
 
 	typedef unsigned int status_id;
 	typedef unsigned int scene_id;
@@ -33,10 +33,10 @@ namespace BLIB {
 		void end(); // Exit process
 
 		status_id	add(status* s);
-		scene_id	add(scene* s);
+		scene_id	add(generic::scene* s);
 
 		void		stage(scene_id id, int slot, transition t = transition::none, float duration = 0.0f);
-		scene_id	add_and_stage(scene* s, int slot, transition t = transition::none, float duration = 0.0f);
+		scene_id	add_and_stage(generic::scene* s, int slot, transition t = transition::none, float duration = 0.0f);
 		int			unstage(scene_id id, transition t = transition::none, float duration = 0.0f);
 		// swap		(int to_layer, int from_layer)
 		

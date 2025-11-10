@@ -64,7 +64,7 @@ skinned_mesh::skinned_mesh(const char* fbx_filename, bool triangulate, coordinat
 		node.attribute = fbx_node->GetNodeAttribute() ? fbx_node->GetNodeAttribute()->GetAttributeType() : FbxNodeAttribute::EType::eUnknown;
 		node.name = fbx_node->GetName();
 		node.unique_id = fbx_node->GetUniqueID();
-		node.parent_index = scene_view.indexof(fbx_node->GetParent() ? fbx_node->GetParent()->GetUniqueID() : 0);
+		node.parent_index = scene_view.index_of(fbx_node->GetParent() ? fbx_node->GetParent()->GetUniqueID() : 0);
 		for (int child_index = 0; child_index < fbx_node->GetChildCount(); ++child_index) {
 			traverse(fbx_node->GetChild(child_index));
 		}
@@ -96,7 +96,7 @@ void skinned_mesh::fetch_meshes(FbxScene* fbx_scene) {
 		mesh& mesh{ meshes.emplace_back() };
 		mesh.unique_id = fbx_node->GetUniqueID();
 		mesh.name = fbx_node->GetName();
-		mesh.node_index = scene_view.indexof(mesh.unique_id);
+		mesh.node_index = scene_view.index_of(mesh.unique_id);
 
 		vector<vector<bone_inf>> bones;
 		fetch_bones(fbx_mesh, bones);
@@ -394,8 +394,8 @@ void skinned_mesh::fetch_skeleton(const FbxMesh* fbx_mesh, skeleton& bind_pose) 
 			skeleton::bone& bone{ bind_pose.bones.at(cluster_index) };
 			bone.name = cluster->GetLink()->GetName();
 			bone.unique_id = cluster->GetLink()->GetUniqueID();
-			bone.parent_index = bind_pose.indexof(cluster->GetLink()->GetParent()->GetUniqueID());
-			bone.node_index = scene_view.indexof(bone.unique_id);
+			bone.parent_index = bind_pose.index_of(cluster->GetLink()->GetParent()->GetUniqueID());
+			bone.node_index = scene_view.index_of(bone.unique_id);
 
 			FbxAMatrix global_reference;
 			cluster->GetTransformMatrix(global_reference);
@@ -462,6 +462,8 @@ void skinned_mesh::create_com_objects() {
 #endif
 	}
 
+	update_meshes(true);
+
 	for (auto& mat : materials) { mat.second.construct(); }
 
 	input_element_desc = {
@@ -469,11 +471,11 @@ void skinned_mesh::create_com_objects() {
 			{"NORMAL",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{"TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{"TANGENT",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{"WEIGHTS",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT },
-			{"BONES",		0, DXGI_FORMAT_R32G32B32A32_UINT,	0, D3D11_APPEND_ALIGNED_ELEMENT },
+			//{"WEIGHTS",	0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT },
+			//{"BONES",		0, DXGI_FORMAT_R32G32B32A32_UINT,	0, D3D11_APPEND_ALIGNED_ELEMENT },
 	};
 
-	create_shaders("skinned_mesh");
+	create_shaders("default_full");
 }
 
 // Public 
@@ -525,7 +527,6 @@ uint32_t skinned_mesh::ray_collision(const transform& model_transform, const flo
 			if (any_hit) { return 1; }
 			if (out_int_point && out_int_normal) {
 				if ((hit == 0) || (int_point - origin).mag_sq() < (*out_int_point - origin).mag_sq()) {
-
 					*out_int_point = int_point;
 					*out_int_normal = int_normal;
 				}
@@ -538,57 +539,53 @@ uint32_t skinned_mesh::ray_collision(const transform& model_transform, const flo
 
 void skinned_mesh::render(const float4x4& world, const color& material_color) const {
 	device::context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	shader::set_vs(vs_cso);
+	constants data{ world, material_color };
+	device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
+	device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
+	uint32_t stride{ sizeof(vertex) };
+	uint32_t offset{ 0 };
+	//const animation::keyframe* animation_keyframe{ get_keyframe() };
 
 	for (const mesh& mesh : meshes) {
 
-		using namespace DirectX;
-
-		const animation::keyframe* mesh_keyframe{ get_keyframe() };
-
-		constants data{ world, material_color };
-		XMStoreFloat4x4(
-			&data.world,
-			XMLoadFloat4x4(&coordinate_system_transforms[coord_sys]) *
-			XMLoadFloat4x4(mesh_keyframe ? &mesh_keyframe->nodes.at(mesh.node_index).global_transform : &mesh.default_global_transform) *
-			XMLoadFloat4x4(&world)
-		);
-
-		const size_t bone_count{ mesh.bind_pose.bones.size() };
-		vector<float4x4> bone_transforms;
-		bone_transforms.resize(bone_count);
-		for (int bone_index = 0; bone_index < bone_count; bone_index++) {
-			const skeleton::bone& bone{ mesh.bind_pose.bones.at(bone_index) };
-			if (mesh_keyframe) {
-				const animation::keyframe::node* bone_animation{ &mesh_keyframe->nodes.at(bone.node_index) };
-				XMStoreFloat4x4(&bone_transforms[bone_index],
-					XMMatrixTranspose( // Align data for shader
-						XMLoadFloat4x4(&bone.offset_transform) *
-						XMLoadFloat4x4(&bone_animation->global_transform) *
-						XMMatrixInverse(nullptr, XMLoadFloat4x4(&mesh.default_global_transform))
-					)
-				);
-			}
-			else {
-				XMStoreFloat4x4(&bone_transforms[bone_index], XMMatrixIdentity());
-			}
-		}
-
-		uint32_t stride{ sizeof(vertex) };
-		uint32_t offset{ 0 };
+		//using namespace DirectX;
+		//
+		//
+		//XMStoreFloat4x4(
+		//	&data.world,
+		//	XMLoadFloat4x4(&coordinate_system_transforms[coord_sys]) *
+		//	XMLoadFloat4x4(animation_keyframe ? &animation_keyframe->at(mesh.node_index).global_transform : &mesh.default_global_transform) *
+		//	XMLoadFloat4x4(&world)
+		//);
+		//
+		//const size_t bone_count{ mesh.bind_pose.bones.size() };
+		//vector<float4x4> bone_transforms;
+		//bone_transforms.resize(bone_count);
+		//for (int bone_index = 0; bone_index < bone_count; bone_index++) {
+		//	const skeleton::bone& bone{ mesh.bind_pose.bones.at(bone_index) };
+		//	if (animation_keyframe) {
+		//		const animation::keyframe::node* bone_animation{ &animation_keyframe->at(bone.node_index) };
+		//		XMStoreFloat4x4(&bone_transforms[bone_index],
+		//			XMMatrixTranspose( // Align data for shader
+		//				XMLoadFloat4x4(&bone.offset_transform) *
+		//				XMLoadFloat4x4(&bone_animation->global_transform) *
+		//				XMMatrixInverse(nullptr, XMLoadFloat4x4(&mesh.default_global_transform))
+		//			)
+		//		);
+		//	}
+		//	else {
+		//		XMStoreFloat4x4(&bone_transforms[bone_index], XMMatrixIdentity());
+		//	}
+		//}
 
 		device::context()->IASetVertexBuffers(0, 1, mesh.get_vertices(), &stride, &offset);
 		device::context()->IASetIndexBuffer(mesh.get_indices(), DXGI_FORMAT_R32_UINT, 0);
-		mesh.update_bone_buffer(bone_transforms);
+		//mesh.update_bone_buffer(bone_transforms);
 
 		for (const mesh::subset& subset : mesh.subsets)
 		{
+			//device::context()->VSSetShaderResources(4, 1, mesh.get_bones());
 			const material& material{ materials.at(subset.material_unique_id) };
-			data.material_color = material_color;
-
-			device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
-			device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
-			device::context()->VSSetShaderResources(4, 1, mesh.get_bones());
 			material.bind(0);
 			device::context()->DrawIndexed(subset.index_count, subset.start_index_location, 0);
 		}

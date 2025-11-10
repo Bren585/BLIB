@@ -21,7 +21,7 @@ namespace BLIB {
 			};
 			std::vector<node> nodes;
 
-			int64_t indexof(uint64_t unique_id) const {
+			int64_t index_of(uint64_t unique_id) const {
 				int64_t index{ 0 };
 				for (const node& node : nodes) { if (node.unique_id == unique_id) { return index; } index++; }
 				return -1;
@@ -70,6 +70,8 @@ namespace BLIB {
 	public:
 		skinned_mesh(const char* fbx_filename, bool triangulate = false, coordinate_system sys = RH_Y);
 		virtual ~skinned_mesh() = default;
+
+		string get_default_vs() const override { return "skinned_mesh"; }
 
 		bool append_animations(string animation_filename, float sampling_rate);
 		void update_animation(animation::keyframe& keyframe);

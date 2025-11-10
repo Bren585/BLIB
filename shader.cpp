@@ -8,8 +8,8 @@ struct vertex_shader_data {
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> input_layout;
 };
 
-std::map<string, vertex_shader_data> vertex_shaders;
-std::map<string, Microsoft::WRL::ComPtr<ID3D11PixelShader>>	pixel_shaders;
+std::map<string, vertex_shader_data> vertex_shaders							= { { NULL_SHADER, {nullptr, nullptr}} };
+std::map<string, Microsoft::WRL::ComPtr<ID3D11PixelShader>>	pixel_shaders	= { { NULL_SHADER, nullptr } };
 
 string filepath = "-1";
 

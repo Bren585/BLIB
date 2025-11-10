@@ -23,37 +23,11 @@ namespace BLIB {
 		canvas capture(size);
 		capture.focus(); // set RTV
 
-		sprite::vertex quad[4] = {
-			{ {-1, -1, 0}, {}, {0, 1} },
-			{ {-1,  1, 0}, {}, {0, 0} },
-			{ { 1, -1, 0}, {}, {1, 1} },
-			{ { 1,  1, 0}, {}, {1, 0} }
-		};
-
 		Microsoft::WRL::ComPtr<ID3D11Buffer> quad_buffer;
-		D3D11_BUFFER_DESC buffer_desc{};
-		buffer_desc.ByteWidth = sizeof(quad);
-		buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
-		buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		buffer_desc.MiscFlags = 0;
-		buffer_desc.StructureByteStride = 0;
-		D3D11_SUBRESOURCE_DATA subresource_data{};
-		subresource_data.pSysMem = quad;
-		subresource_data.SysMemPitch = 0;
-		subresource_data.SysMemSlicePitch = 0;
-		HRESULT hr = device::get()->CreateBuffer(&buffer_desc, &subresource_data, quad_buffer.GetAddressOf()); VERIFY;
+		make_quad_buffer(quad_buffer.GetAddressOf());
 	
-		D3D11_INPUT_ELEMENT_DESC input_element_desc[]{
-			{ "POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "COLOR",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0}
-		};
-
-		shader::load_vs("sprite", input_element_desc, _countof(input_element_desc));
-		shader::set_vs("sprite");
-
-		render_settings rs{ "orm_compression" };
+		sprite::load_shader();
+		render_settings rs{ pixel_shader{"orm_compression"}, vertex_shader(DEFAULT_FLAT) };
 		rs.set();
 
 		uint32_t stride{ sizeof(sprite::vertex) };
@@ -80,7 +54,7 @@ namespace BLIB {
 	void construct_normal_from_bump(std::unique_ptr<sprite>& normal_map, string filename) {
 		flat::object bump_map(filename);
 		canvas capture(bump_map.size);
-		capture.draw(&bump_map, render_settings{ "bump_to_norm" });
+		capture.draw(&bump_map, render_settings{ pixel_shader{"bump_to_norm"} });
 		normal_map.reset(capture.peek_sprite()->clone());
 	}
 }

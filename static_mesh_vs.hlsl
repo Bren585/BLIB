@@ -1,25 +1,16 @@
 #include "full_vs.hlsli"
+#include "inverse.hlsli"
 VS_OUT main(float4 position : POSITION, float4 normal : NORMAL, float2 texcoord : TEXCOORD, float4 tangent : TANGENT)
 {
+    float3x3 normal_world = transpose(inverse((float3x3) world));
+    
     VS_OUT vout;
-    vout.position = mul(position, mul(world, view_projection));
-    
+    vout.position       = mul(position, mul(world, view_projection));
     vout.world_position = mul(position, world);
-    
-    normal.w = 0;
-    vout.world_normal = normalize(mul(normal, world));
-    
-    //float4 N = normalize(mul(normal, world));
-    //float4 L = normalize(-light_direction);
-    
-    //vout.color.rgb = material_color.rgb * max(0, dot(L, N));
-    //vout.color.a = material_color.a;
-    
-    vout.color = material_color;
-    
-    vout.texcoord = texcoord;
-    vout.world_tangent = tangent;
-    
+    vout.color          = material_color;
+    vout.world_normal   = float4(normalize(mul(normal.xyz, normal_world)), normal.w);
+    vout.world_tangent  = float4(normalize(mul(tangent.xyz, normal_world)), tangent.w);
+    vout.texcoord       = texcoord;
     
     return vout;
 }

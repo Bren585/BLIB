@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "text.h" 
-#include "sampler.h"
+#include "render_settings.h"
 using namespace BLIB;
 using namespace text;
 
@@ -17,13 +17,12 @@ string						fonts_filepath	= L"-1";
 
 void font::write(string s, float2 pos, float2 size, color color) {
 	float2 uv = { static_cast<float>(texture2d_desc.Width / 16.0f), static_cast<float>(texture2d_desc.Height / 16.0f) };
-
 	float2 carry = 0;
 
-	begin();
-	sampler::set(sampler::POINT);
+	begin(color);
+	render_settings{ sampler::POINT, vertex_shader(sprite::get_default_vs()), pixel_shader(DEFAULT_FLAT) }.set();
 	for (const char c : s) {
-		prerender(pos + carry, size, uv * float2((float)(c & 0x0F), (float)(c >> 4)), uv, 0, C_CC, color);
+		prerender(pos + carry, size, uv * float2((float)(c & 0x0F), (float)(c >> 4)), uv, 0, C_CC);
 		carry.x += size.x;
 	}
 	end();

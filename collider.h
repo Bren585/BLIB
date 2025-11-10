@@ -84,7 +84,7 @@ namespace BLIB::generic {
 			for (auto& child : children) { child->weak_clone(out); }
 		}
 		
-		virtual void _render_debug() const {}
+		virtual void _render_debug(render_settings rs) const {}
 
 	public:
 		collider(collider* parent) : hierarchy(parent) {}
@@ -98,9 +98,9 @@ namespace BLIB::generic {
 			return out;
 		};
 
-		void render_debug() const {
+		void render_debug(render_settings rs) const {
 #ifdef _DEBUG
-			_render_debug();
+			_render_debug(rs);
 #endif
 		}
 	};
@@ -170,7 +170,7 @@ namespace BLIB::flat {
 
 		float _ray_pick(float2 ray_origin, float2 ray_direction, float2* out_position = nullptr, float2* out_normal = nullptr) const override;
 		
-		void _render_debug() const override;
+		void _render_debug(render_settings rs) const override;
 	
 	public:
 		aligned_rect_collider(collider* parent, float2 size) : collider(parent), size(size) {}
@@ -194,7 +194,7 @@ namespace BLIB::flat {
 
 		float _ray_pick(float2 ray_origin, float2 ray_direction, float2* out_position = nullptr, float2* out_normal = nullptr) const override;
 		
-		void _render_debug() const override;
+		void _render_debug(render_settings rs) const override;
 
 	public:
 		rect_collider(collider* parent, float2 size, float angle) : collider(parent), size(size), angle(angle) {}
@@ -218,7 +218,7 @@ namespace BLIB::flat {
 
 		float _ray_pick(float2 ray_origin, float2 ray_direction, float2* out_position = nullptr, float2* out_normal = nullptr) const override;
 
-		void _render_debug() const override;
+		void _render_debug(render_settings rs) const override;
 
 	public:
 		circle_collider(collider* parent, float r) : collider(parent), r(r) {}
@@ -307,7 +307,7 @@ namespace BLIB::full {
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
-		void _render_debug() const override;
+		void _render_debug(render_settings rs) const override;
 
 	public:
 		aabb_collider(collider* parent, float3 size) : collider(parent), size(size) {}
@@ -336,7 +336,7 @@ namespace BLIB::full {
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
-		void _render_debug() const override;
+		void _render_debug(render_settings rs) const override;
 
 	public:
 		box_collider(collider* parent, float3 size, float3 rotation) : collider(parent), size(size), rotation(rotation) {}
@@ -365,7 +365,7 @@ namespace BLIB::full {
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
-		void _render_debug() const override;
+		void _render_debug(render_settings rs) const override;
 	
 	public:
 		sphere_collider(collider* parent, float r) : collider(parent), r(r) {}
@@ -394,7 +394,7 @@ namespace BLIB::full {
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
-		void _render_debug() const override;
+		void _render_debug(render_settings rs) const override;
 	
 	public:
 		cylinder_collider(collider* parent, float r, float h) : collider(parent), r(r), h(h) {}
@@ -424,7 +424,7 @@ namespace BLIB::full {
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
-		void _render_debug() const override;
+		void _render_debug(render_settings rs) const override;
 
 	public:
 		capsule_collider(collider* parent, float r, float h) : collider(parent), r(r), h(h) {}
@@ -453,7 +453,7 @@ namespace BLIB::full {
 	
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
-		void _render_debug() const override;
+		void _render_debug(render_settings rs) const override;
 
 	public:
 		mesh_collider(collider* parent, const model* ptr) : collider(parent), model_ptr(ptr) {}
@@ -481,7 +481,7 @@ namespace BLIB::full {
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
-		void _render_debug() const override;
+		void _render_debug(render_settings rs) const override;
 
 	public:
 		plane_collider(collider* parent, float3 n) : collider(parent), normal(n) {}

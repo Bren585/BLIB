@@ -96,6 +96,8 @@ public:
 	inline float  mag	() const		{ return sqrtf(mag_sq()); }
 	inline float2 norm	()				{ const float m = mag(); if (non_zero(m)) return operator/=(m); else return 0; }
 	inline float2 norm	() const		{ const float m = mag(); if (non_zero(m)) return operator/(m);  else return 0; }
+	inline float2 floor () const		{ return { floorf(x), floorf(y) }; }
+	inline float2 ceil	() const		{ return { ceilf(x), ceilf(y) }; }
 	inline float2 abs	() const		{ return { fabsf(x), fabsf(y) }; }
 	inline float2 rotate(float angle_degrees);
 
@@ -143,9 +145,9 @@ public:
 	float3(float s = 0)					: DirectX::XMFLOAT3(s, s, s) {}
 	float3(DirectX::XMVECTOR v)			{ DirectX::XMStoreFloat3(this, v); }
 
-	inline float2 xy() { return { x, y }; }
-	inline float2 xz() { return { x, z }; }
-	inline float2 yz() { return { y, z }; }
+	inline float2 xy() const { return { x, y }; }
+	inline float2 xz() const { return { x, z }; }
+	inline float2 yz() const { return { y, z }; }
 
 	inline				float3 operator+(const float3& that			) const { return { x + that.x,	y + that.y,		z + that.z		}; }
 	inline				float3 operator*(const float3& that			) const { return { x * that.x,	y * that.y,		z * that.z		}; }
@@ -192,6 +194,8 @@ public:
 	inline float  mag		() const	{ return sqrtf(mag_sq()); }
 	inline float3 norm		()			{ const float m = mag(); if (non_zero(m)) return operator/=(m); else return 0; }
 	inline float3 norm		() const	{ const float m = mag(); if (non_zero(m)) return operator/(m);  else return 0; }
+	inline float3 floor		() const	{ return { floorf(x), floorf(y), floorf(z) }; }
+	inline float3 ceil		() const	{ return { ceilf(x), ceilf(y), ceilf(z) }; }
 	inline float3 abs		() const	{ return { fabsf(x), fabsf(y), fabsf(z) }; }
 
 	inline explicit operator bool				() const { return x || y || z; }
@@ -310,7 +314,7 @@ public:
 	float3 rotate(const float3& t) const { return { dot(t, r[0]), dot(t, r[1]), dot(t, r[2]) }; }
 	float3 inv_rotate(const float3& t) const { return transpose().rotate(t); }
 
-	float3 to_euler() const { return { asin(clamp(-1.0f, r[1].z, 1.0f)), atan2(-r[2].x, -r[2].z), atan2(-r[0].y, r[1].y) }; }
+	float3 to_euler() const { return { -asin(clamp(-1.0f, r[1].z, 1.0f)), atan2(-r[2].x, -r[2].z), atan2(-r[0].y, r[1].y) }; }
 };
 
 inline float3x3 face_to(const float3& F) {
@@ -389,14 +393,15 @@ public:
 	SERIALIZE(r, g, b, a)
 };
 
-#define WHITE	{1, 1, 1}
-#define RED		{1, 0, 0}
-#define GREEN	{0, 1, 0}
-#define BLUE	{0, 0, 1}
-#define YELLOW	{1, 1, 0}
-#define AQUA    {0, 1, 1}
-#define PINK    {1, 0, 1}
-#define BLACK	{0, 0, 0}
+#define WHITE		color {1, 1, 1}
+#define RED			color {1, 0, 0}
+#define GREEN		color {0, 1, 0}
+#define BLUE		color {0, 0, 1}
+#define YELLOW		color {1, 1, 0}
+#define AQUA		color {0, 1, 1}
+#define PINK		color {1, 0, 1}
+#define BLACK		color {0, 0, 0}
+#define COLORLESS	color {0, 0, 0, 0}
 
 /***********************************************************************************************************************
 													float4
@@ -412,18 +417,19 @@ public:
 	float4(float2 f, float z, float w)			: DirectX::XMFLOAT4(f.x, f.y, z, w) {}
 	float4(float s = 0)							: DirectX::XMFLOAT4(s, s, s, s) {}
 	float4(color c)								: DirectX::XMFLOAT4(c.r, c.g, c.b, c.a) {}
+	float4(DirectX::XMVECTOR v)					{ DirectX::XMStoreFloat4(this, v); }
 
-	inline float2 xy() { return { x, y }; }
-	inline float2 xz() { return { x, z }; }
-	inline float2 xw() { return { x, w }; }
-	inline float2 yz() { return { y, z }; }
-	inline float2 yw() { return { y, w }; }
-	inline float2 zw() { return { z, w }; }
+	inline float2 xy() const { return { x, y }; }
+	inline float2 xz() const { return { x, z }; }
+	inline float2 xw() const { return { x, w }; }
+	inline float2 yz() const { return { y, z }; }
+	inline float2 yw() const { return { y, w }; }
+	inline float2 zw() const { return { z, w }; }
 
-	inline float3 xyz() { return { x, y, z }; }
-	inline float3 xyw() { return { x, y, w }; }
-	inline float3 xzw() { return { x, z, w }; }
-	inline float3 yzw() { return { y, z, w }; }
+	inline float3 xyz() const { return { x, y, z }; }
+	inline float3 xyw() const { return { x, y, w }; }
+	inline float3 xzw() const { return { x, z, w }; }
+	inline float3 yzw() const { return { y, z, w }; }
 
 	inline				float4 operator+(float4 that	) const { return { x + that.x,	y + that.y,		z + that.z,  w + that.w		}; }
 	inline				float4 operator*(float4 that	) const { return { x * that.x,	y * that.y,		z * that.z,  w * that.w		}; }
@@ -457,12 +463,16 @@ public:
 	inline float  mag	() const	{ return sqrtf(mag_sq()); }
 	inline float4 norm	()			{ const float m = mag(); if (non_zero(m)) return operator/=(m); else return 0; }
 	inline float4 norm	() const	{ const float m = mag(); if (non_zero(m)) return operator/(m);  else return 0; }
+	inline float4 floor	() const	{ return { floorf(x), floorf(y), floorf(z), floorf(w) }; }
+	inline float4 ceil	() const	{ return { ceilf(x), ceilf(y), ceilf(z), ceilf(w) }; }
 	inline float4 abs	() const	{ return { fabsf(x), fabsf(y), fabsf(z), fabsf(w) }; }
 
 	inline explicit operator bool				() const { return x || y || z || w; }
 	inline			operator color				() const { return { x, y, z, w }; }
 	inline			operator DirectX::XMFLOAT4	() const { return { x, y, z, w }; }
 	inline			operator string				() const { return string("{ ", x, ", ", y, ", ", z, ", ", w, " }"); }
+
+	explicit inline operator xmvector() const { return DirectX::XMVectorSet(x, y, z, w); }
 
 	SERIALIZE(x, y, z, w)
 };
@@ -507,6 +517,22 @@ namespace cereal {
 ************************************************************************************************************************/
 
 typedef DirectX::XMMATRIX matrix;
+
+inline matrix inverse3x3(const matrix& m) {
+	matrix trunc = m;
+	trunc.r[3] = DirectX::XMVectorSet(0, 0, 0, 1);
+	return DirectX::XMMatrixInverse(nullptr, trunc);
+}
+
+inline matrix transpose(const matrix& m) {
+	return DirectX::XMMatrixTranspose(m);
+}
+
+inline float3 mul(const float3& v, const matrix& m) { return DirectX::XMVector3Transform((xmvector)v, m); }
+inline float4 mul(const float4& v, const matrix& m) { return DirectX::XMVector4Transform((xmvector)v, m); }
+
+inline float3 mul_normal(const float3& v, const matrix& m) {				return		(float3)DirectX::XMVector3TransformNormal((xmvector)v,			m);			}
+inline float4 mul_normal(const float4& v, const matrix& m) { float w = v.w;	return {	(float3)DirectX::XMVector3TransformNormal((xmvector)v.xyz(),	m), w };	}
 
 /***********************************************************************************************************************
 													transform

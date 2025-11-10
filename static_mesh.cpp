@@ -221,7 +221,7 @@ static_mesh::static_mesh(const string& obj_filename, bool uv_inverse = false) {
 		{"TANGENT",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 
-	create_shaders("static_mesh");
+	create_shaders("default_full");
 }
 
 void static_mesh::render(const float4x4& world, const color& material_color) const {
@@ -231,8 +231,6 @@ void static_mesh::render(const float4x4& world, const color& material_color) con
 	device::context()->IASetVertexBuffers(0, 1, get_vertices(), &stride, &offset);
 	device::context()->IASetIndexBuffer(get_indices(), DXGI_FORMAT_R32_UINT, 0);
 	device::context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	
-	shader::set_vs(vs_cso);
 
 	for (const auto& material_pair : materials) {
 		const material& material{ material_pair.second };

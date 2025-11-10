@@ -8,6 +8,7 @@ using std::vector;
 using std::unique_ptr;
 
 namespace BLIB {
+	using generic::scene;
 
 	namespace manager {
 
@@ -23,9 +24,9 @@ namespace BLIB {
 		}
 
 		static scene* get_scene(scene_id id) { 
-			auto scene = tasks.find(id);
-			if (scene == tasks.end()) { return nullptr; }
-			return dynamic_cast<BLIB::scene*>(tasks[id].get()); 
+			auto scene_ptr = tasks.find(id);
+			if (scene_ptr == tasks.end()) { return nullptr; }
+			return dynamic_cast<scene*>(tasks[id].get()); 
 		}
 
 		static void end_task(status_id id) {
@@ -106,12 +107,12 @@ namespace BLIB {
 		}
 
 		int unstage(scene_id id, transition t, float duration) {
-			scene* scene = get_scene(id);
-			assert(scene);
+			scene* scene_ptr = get_scene(id);
+			assert(scene_ptr);
 			for (int i = 0; i < scene_stack_size; i++) {
 				if (scene_stack[i] == id) {
 					scene_stack[i] = 0;
-					scene->unpreserve();
+					scene_ptr->unpreserve();
 					return i;
 				}
 			}
@@ -120,8 +121,8 @@ namespace BLIB {
 
 		void display() {
 			for (int i = scene_stack_size - 1; i >= 0; i--) {
-				scene* scene = get_scene(scene_stack[i]);
-				if (scene) scene->render();
+				scene* scene_ptr = get_scene(scene_stack[i]);
+				if (scene_ptr) scene_ptr->render(); 
 			}
 		}
 

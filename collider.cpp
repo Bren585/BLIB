@@ -582,7 +582,7 @@ namespace BLIB::flat {
 
 	// Debug Rendering
 
-	void aligned_rect_collider::_render_debug() const {
+	void aligned_rect_collider::_render_debug(render_settings rs) const {
 		float2 pos = get_pos();
 		float2 size = get_size();
 		float2 axes[2] = { {1, 0}, {0, 1} };
@@ -590,10 +590,10 @@ namespace BLIB::flat {
 		debug::draw::line(pos, pos + axes[0] * size.x, RED);
 		debug::draw::line(pos, pos + axes[1] * size.y, PINK);
 		debug::draw::rect(pos, size, WHITE);
-		for (auto& child : get_children()) { child->render_debug(); }
+		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
-	void rect_collider::_render_debug() const {
+	void rect_collider::_render_debug(render_settings rs) const {
 		float2 pos = get_pos();
 		float2 size = get_size();
 		float ang = get_ang();
@@ -602,15 +602,15 @@ namespace BLIB::flat {
 		debug::draw::line(pos, pos + axes[0] * size.x, RED);
 		debug::draw::line(pos, pos + axes[1] * size.y, PINK);
 		debug::draw::rect(pos, size, WHITE, ang);
-		for (auto& child : get_children()) { child->render_debug(); }
+		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
-	void circle_collider::_render_debug() const {
+	void circle_collider::_render_debug(render_settings rs) const {
 		float2 pos = get_pos();
 		float r = get_r();
 		debug::draw::circle(pos, 1.0f, WHITE);
 		debug::draw::circle(pos, r, WHITE);
-		for (auto& child : get_children()) { child->render_debug(); }
+		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
 }
@@ -1890,80 +1890,80 @@ namespace BLIB::full {
 
 	// Debug Rendering
 
-	void aabb_collider::_render_debug() const {
+	void aabb_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_cube(-size, size)); }
 		transform collider_trans;
 		collider_trans.set_ang(0);
 		collider_trans.set_scl(get_scl());
 		collider_trans.set_pos(trans.get_pos());
-		render_settings(rasterize::WIRE, stencil::SURFACE_NONE, "default_full").set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
 		debug_model->render(collider_trans, WHITE);
-		for (auto& child : get_children()) { child->render_debug(); }
+		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
-	void box_collider::_render_debug() const {
+	void box_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_cube(-size, size)); }
 		transform collider_trans;
 		collider_trans.set_ang(get_rotation());
 		collider_trans.set_scl(get_scl());
 		collider_trans.set_pos(trans.get_pos());
-		render_settings(rasterize::WIRE, stencil::SURFACE_NONE, "default_full").set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
 		debug_model->render(collider_trans, WHITE);
-		for (auto& child : get_children()) { child->render_debug(); }
+		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
-	void sphere_collider::_render_debug() const {
+	void sphere_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_sphere()); }
 		transform collider_trans;
 		collider_trans.set_ang(0);
 		collider_trans.set_scl(get_r());
 		collider_trans.set_pos(trans.get_pos());
-		render_settings(rasterize::WIRE, stencil::SURFACE_NONE, "default_full").set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
 		debug_model->render(trans, WHITE);
-		for (auto& child : get_children()) { child->render_debug(); }
+		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
-	void cylinder_collider::_render_debug() const {
+	void cylinder_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_cylinder()); }
 		transform collider_trans;
 		collider_trans.set_ang(0);
 		collider_trans.set_scl(float3{ get_r(), get_h(), get_r() } * 2);
 		collider_trans.set_pos(trans.get_pos());
-		render_settings(rasterize::WIRE, stencil::SURFACE_NONE, "default_full").set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
 		debug_model->render(collider_trans, WHITE);
-		for (auto& child : get_children()) { child->render_debug(); }
+		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
-	void capsule_collider::_render_debug() const {
+	void capsule_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_capsule()); }
 		transform collider_trans;
 		collider_trans.set_ang(0);
 		collider_trans.set_scl(float3{ get_r(), get_h(), get_r() } * 2);
 		collider_trans.set_pos(trans.get_pos());
-		render_settings(rasterize::WIRE, stencil::SURFACE_NONE, "default_full").set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
 		debug_model->render(collider_trans, WHITE);
-		for (auto& child : get_children()) { child->render_debug(); }
+		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
-	void mesh_collider::_render_debug() const {
-		render_settings(rasterize::WIRE, stencil::SURFACE_NONE, "default_full").set();
+	void mesh_collider::_render_debug(render_settings rs) const {
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
 		transform collider_trans;
 		collider_trans.set_ang(0);
 		collider_trans.set_scl(get_scl());
 		collider_trans.set_pos(trans.get_pos());
 		model_ptr->render(collider_trans, WHITE);
-		for (auto& child : get_children()) { child->render_debug(); }
+		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
-	void plane_collider::_render_debug() const {
+	void plane_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_quad()); }
-		render_settings(rasterize::WIRE, stencil::SURFACE_NONE, "default_full").set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
 		transform collider_trans;
 		collider_trans.set_ang(face_to(normal).to_euler());
 		collider_trans.set_scl(get_scl());
 		collider_trans.set_pos(trans.get_pos());
 		debug_model->render(collider_trans, WHITE);
-		for (auto& child : get_children()) { child->render_debug(); }
+		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
 }

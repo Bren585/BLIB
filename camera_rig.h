@@ -1,5 +1,5 @@
 #pragma once
-#include "viewer.h"
+#include "camera.h"
 #include "object.h"
 
 namespace BLIB {
@@ -32,7 +32,7 @@ namespace BLIB {
 #endif
 			}
 
-			void bind() { if (cam) { sync(); cam->bind(); } };
+			void update() { if (cam) { sync(); } };
 			camera* get_camera() { return cam; }
 			void set_camera(camera* c) { cam = c; }
 		};

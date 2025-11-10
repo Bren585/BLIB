@@ -19,16 +19,16 @@ sprite_batch::sprite_batch(const string& filename, size_t max_sprites, flags fla
 	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
 }
 
-sprite_batch::sprite_batch(sprite_batch&& o) noexcept : sprite(make_buffer), max_vertices(o.max_vertices) {
+sprite_batch::sprite_batch(sprite_batch&& o) noexcept : sprite(clone_flags), max_vertices(o.max_vertices) {
 	vertices				= std::move(o.vertices				);
 	vertex_buffer			= std::move(o.vertex_buffer			);
 	shader_resource_view	= std::move(o.shader_resource_view	);
 	texture2d_desc = o.texture2d_desc;
 }
 
-void sprite_batch::prerender(float2 pos, float2 size, float2 tpos, float2 tsize, float angle, float2 c, color color) {
+void sprite_batch::prerender(float2 pos, float2 size, float2 tpos, float2 tsize, float angle, float2 c) {
 	vertex square[4];
-	if (!create_vertices(square, pos, size, tpos, tsize, angle, c, color)) return;
+	if (!create_vertices(square, pos, size, tpos, tsize, angle, c)) return;
 	vertices.push_back(square[0]);
 	vertices.push_back(square[1]);
 	vertices.push_back(square[2]);
@@ -37,10 +37,12 @@ void sprite_batch::prerender(float2 pos, float2 size, float2 tpos, float2 tsize,
 	vertices.push_back(square[1]);
 }
 
-void sprite_batch::begin() {
+void sprite_batch::begin(color color) {
 	vertices.clear();
-	shader::set_ps("default_flat");
+	shader::set_ps(DEFAULT_FLAT);
 	device::context()->PSSetShaderResources(0, 1, shader_resource_view.GetAddressOf());
+	constants data{ color };
+	device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
 }
 
 void sprite_batch::end() {
@@ -58,11 +60,11 @@ void sprite_batch::end() {
 	}
 	device::context()->Unmap(vertex_buffer.Get(), 0);
 
+	device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
+	shader::set_vs(DEFAULT_FLAT);
 	UINT stride{ sizeof(vertex) };
 	UINT offset{ 0 };
 	device::context()->IASetVertexBuffers(0, 1, vertex_buffer.GetAddressOf(), &stride, &offset);
 	device::context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	shader::set_vs("vs_cso");
-
 	device::context()->Draw(static_cast<UINT>(vertex_count), 0);
 }

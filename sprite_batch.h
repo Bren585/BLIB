@@ -17,8 +17,8 @@ namespace BLIB {
 		// maybe make this work again, ya dig?
 		virtual void render(float2 pos, float2 size, float2 tpos = 0, float2 tsize = 0, float angle = 0, float2 c = C_CC, color color = { 1, 1, 1 }) override {}
 
-		void prerender(float2 pos, float2 size, float2 tpos = 0, float2 tsize = 0, float angle = 0, float2 c = C_CC, color color = { 1, 1, 1 });
-		void begin();
+		void prerender(float2 pos, float2 size, float2 tpos = 0, float2 tsize = 0, float angle = 0, float2 c = C_CC);
+		void begin(color color = WHITE);
 		void end();
 	};
 }

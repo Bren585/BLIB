@@ -63,6 +63,24 @@
     <Filter Include="source\debug shapes">
       <UniqueIdentifier>{74ae875d-d24d-42be-a8c5-2e535b2339c1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="headers\cameras">
+      <UniqueIdentifier>{2c877143-38d2-42c8-8895-f7961e27b14f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="headers\pipeline">
+      <UniqueIdentifier>{6d160237-94e3-4092-a8d9-51e5fc5257ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="headers\scenes">
+      <UniqueIdentifier>{cdd52a6d-ab96-4f4f-bf87-1d3b575cba7e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\pipeline">
+      <UniqueIdentifier>{aeb44fba-6ccf-4b34-8bcc-4642e007e2c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\scenes">
+      <UniqueIdentifier>{af504e41-f69c-47c2-81a6-1f7e301785d8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\cameras">
+      <UniqueIdentifier>{ce2d9e8c-fd98-46ec-b843-b30954abcbec}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -70,9 +88,6 @@
     </ClCompile>
     <ClCompile Include="string.cpp">
       <Filter>independants\source</Filter>
-    </ClCompile>
-    <ClCompile Include="canvas.cpp">
-      <Filter>source</Filter>
     </ClCompile>
     <ClCompile Include="audio.cpp">
       <Filter>source\render settings</Filter>
@@ -89,14 +104,8 @@
     <ClCompile Include="input.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="manager.cpp">
-      <Filter>source</Filter>
-    </ClCompile>
     <ClCompile Include="rasterize.cpp">
       <Filter>source\render settings</Filter>
-    </ClCompile>
-    <ClCompile Include="render_target.cpp">
-      <Filter>source</Filter>
     </ClCompile>
     <ClCompile Include="sampler.cpp">
       <Filter>source\render settings</Filter>
@@ -113,13 +122,7 @@
     <ClCompile Include="static_mesh.cpp">
       <Filter>source\models</Filter>
     </ClCompile>
-    <ClCompile Include="text.cpp">
-      <Filter>source</Filter>
-    </ClCompile>
     <ClCompile Include="texture.cpp">
-      <Filter>source</Filter>
-    </ClCompile>
-    <ClCompile Include="viewer.cpp">
       <Filter>source</Filter>
     </ClCompile>
     <ClCompile Include="framework.cpp">
@@ -165,7 +168,31 @@
       <Filter>source\debug shapes</Filter>
     </ClCompile>
     <ClCompile Include="materials.cpp">
-      <Filter>source</Filter>
+      <Filter>source\models</Filter>
+    </ClCompile>
+    <ClCompile Include="canvas.cpp">
+      <Filter>source\game objects</Filter>
+    </ClCompile>
+    <ClCompile Include="lighting.cpp">
+      <Filter>source\pipeline</Filter>
+    </ClCompile>
+    <ClCompile Include="render_target.cpp">
+      <Filter>source\pipeline</Filter>
+    </ClCompile>
+    <ClCompile Include="scene.cpp">
+      <Filter>source\scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="manager.cpp">
+      <Filter>source\scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="text.cpp">
+      <Filter>source\sprites</Filter>
+    </ClCompile>
+    <ClCompile Include="camera.cpp">
+      <Filter>source\cameras</Filter>
+    </ClCompile>
+    <ClCompile Include="mesh.cpp">
+      <Filter>source\models</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -184,19 +211,7 @@
     <ClInclude Include="BLIB.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="canvas.h">
-      <Filter>headers</Filter>
-    </ClInclude>
     <ClInclude Include="input.h">
-      <Filter>headers</Filter>
-    </ClInclude>
-    <ClInclude Include="load_scene.h">
-      <Filter>headers</Filter>
-    </ClInclude>
-    <ClInclude Include="render_lock.h">
-      <Filter>headers</Filter>
-    </ClInclude>
-    <ClInclude Include="render_target.h">
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="scene.h">
@@ -205,13 +220,7 @@
     <ClInclude Include="status.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="text.h">
-      <Filter>headers</Filter>
-    </ClInclude>
     <ClInclude Include="texture.h">
-      <Filter>headers</Filter>
-    </ClInclude>
-    <ClInclude Include="viewer.h">
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="cereal.h">
@@ -283,12 +292,6 @@
     <ClInclude Include="window.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="transition_scene.h">
-      <Filter>headers</Filter>
-    </ClInclude>
-    <ClInclude Include="manager.h">
-      <Filter>headers</Filter>
-    </ClInclude>
     <ClInclude Include="imgui\imconfig.h">
       <Filter>imgui</Filter>
     </ClInclude>
@@ -331,24 +334,51 @@
     <ClInclude Include="all_shapes.h">
       <Filter>headers\debug shapes</Filter>
     </ClInclude>
+    <ClInclude Include="camera.h">
+      <Filter>headers\cameras</Filter>
+    </ClInclude>
     <ClInclude Include="camera_rig.h">
-      <Filter>headers</Filter>
+      <Filter>headers\cameras</Filter>
+    </ClInclude>
+    <ClInclude Include="canvas.h">
+      <Filter>headers\game objects</Filter>
+    </ClInclude>
+    <ClInclude Include="load_scene.h">
+      <Filter>headers\scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="manager.h">
+      <Filter>headers\scenes</Filter>
     </ClInclude>
     <ClInclude Include="materials.h">
-      <Filter>headers</Filter>
+      <Filter>headers\models</Filter>
+    </ClInclude>
+    <ClInclude Include="render_lock.h">
+      <Filter>headers\pipeline</Filter>
+    </ClInclude>
+    <ClInclude Include="render_target.h">
+      <Filter>headers\pipeline</Filter>
+    </ClInclude>
+    <ClInclude Include="transition_scene.h">
+      <Filter>headers\scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="lighting.h">
+      <Filter>headers\pipeline</Filter>
+    </ClInclude>
+    <ClInclude Include="text.h">
+      <Filter>headers\sprites</Filter>
+    </ClInclude>
+    <ClInclude Include="model_animation.h">
+      <Filter>headers\models</Filter>
+    </ClInclude>
+    <ClInclude Include="mesh.h">
+      <Filter>headers\models</Filter>
+    </ClInclude>
+    <ClInclude Include="lights.h">
+      <Filter>headers\pipeline</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="geometric_primitive_vs.hlsl">
-      <Filter>shaders\vs</Filter>
-    </FxCompile>
-    <FxCompile Include="skinned_mesh_vs.hlsl">
-      <Filter>shaders\vs</Filter>
-    </FxCompile>
-    <FxCompile Include="sprite_vs.hlsl">
-      <Filter>shaders\vs</Filter>
-    </FxCompile>
-    <FxCompile Include="static_mesh_vs.hlsl">
+    <FxCompile Include="default_flat_vs.hlsl">
       <Filter>shaders\vs</Filter>
     </FxCompile>
     <FxCompile Include="default_full_ps.hlsl">
@@ -366,19 +396,22 @@
     <FxCompile Include="bump_to_norm_ps.hlsl">
       <Filter>shaders\ps</Filter>
     </FxCompile>
-    <FxCompile Include="orm_compression.hlsl">
+    <FxCompile Include="orm_compression_ps.hlsl">
       <Filter>shaders\ps</Filter>
     </FxCompile>
-    <FxCompile Include="test_normal_ps.hlsl">
+    <FxCompile Include="default_full_vs.hlsl">
+      <Filter>shaders\vs</Filter>
+    </FxCompile>
+    <FxCompile Include="shadow_vs.hlsl">
+      <Filter>shaders\vs</Filter>
+    </FxCompile>
+    <FxCompile Include="deferred_lighting_ps.hlsl">
       <Filter>shaders\ps</Filter>
     </FxCompile>
-    <FxCompile Include="test_tangent_ps.hlsl">
+    <FxCompile Include="deferred_begin_ps.hlsl">
       <Filter>shaders\ps</Filter>
     </FxCompile>
-    <FxCompile Include="test_bitangent_ps.hlsl">
-      <Filter>shaders\ps</Filter>
-    </FxCompile>
-    <FxCompile Include="test_tbn_ps.hlsl">
+    <FxCompile Include="shadow_ps.hlsl">
       <Filter>shaders\ps</Filter>
     </FxCompile>
   </ItemGroup>
@@ -399,6 +432,21 @@
       <Filter>shaders\hlsli</Filter>
     </None>
     <None Include="math_constants.hlsli">
+      <Filter>shaders\hlsli</Filter>
+    </None>
+    <None Include="flat_vs.hlsli">
+      <Filter>shaders\hlsli</Filter>
+    </None>
+    <None Include="inverse.hlsli">
+      <Filter>shaders\hlsli</Filter>
+    </None>
+    <None Include="shadows.hlsli">
+      <Filter>shaders\hlsli</Filter>
+    </None>
+    <None Include="lighting.hlsli">
+      <Filter>shaders\hlsli</Filter>
+    </None>
+    <None Include="camera.hlsli">
       <Filter>shaders\hlsli</Filter>
     </None>
   </ItemGroup>

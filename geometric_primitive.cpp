@@ -11,7 +11,7 @@ geometric_primitive::geometric_primitive() {
 		{"TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{"TANGENT",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
-	create_shaders("geometric_primitive");
+	create_shaders("default_full");
 	create_materials();
 
 	minimum = -0.5f;
@@ -25,8 +25,6 @@ void geometric_primitive::render(const float4x4& world, const color& material_co
 	device::context()->IASetVertexBuffers(0, 1, get_vertices(), &stride, &offset);
 	device::context()->IASetIndexBuffer(get_indices(), DXGI_FORMAT_R32_UINT, 0);
 	device::context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	
-	shader::set_vs(vs_cso);
 
 	constants data{ world, material_color };
 	device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
@@ -483,3 +481,44 @@ capsule::capsule(float height, float radius, int edges) : geometric_primitive() 
 	create_buffers();
 }
 #pragma warning( pop )
+
+rect_pyramid::rect_pyramid() {
+	float rt_five = sqrtf(5.0f);
+	float dy = 1 / rt_five;
+	float dx = dy * 2;
+
+	vertices = {
+		// Bottom
+		{ { -0.5f, -0.5f, -0.5f }, {  00, -01,  00 }, { 0, 0 }, {  1,  0,  0,  1 } }, // 0 (0)	0 ---- 1
+		{ {  0.5f, -0.5f, -0.5f }, {  00, -01,  00 }, { 0, 0 }, {  1,  0,  0,  1 } }, // 1 (1)	|      |
+		{ { -0.5f, -0.5f,  0.5f }, {  00, -01,  00 }, { 0, 0 }, {  1,  0,  0,  1 } }, // 2 (2)	|      |
+		{ {  0.5f, -0.5f,  0.5f }, {  00, -01,  00 }, { 0, 0 }, {  1,  0,  0,  1 } }, // 3 (3)	2 ---- 3
+		// Front
+		{ {  0.0f,  0.5f,  0.0f }, {  00,  dy, -dx }, { 0, 0 }, {  1,  0,  0,  1 } }, // 4 (A)	  A
+		{ { -0.5f, -0.5f, -0.5f }, {  00,  dy, -dx }, { 0, 0 }, {  1,  0,  0,  1 } }, // 5 (0)	 * *
+		{ {  0.5f, -0.5f, -0.5f }, {  00,  dy, -dx }, { 0, 0 }, {  1,  0,  0,  1 } }, // 6 (1)	0 - 1
+		// Right
+		{ {  0.0f,  0.5f,  0.0f }, {  dx,  dy,  00 }, { 0, 0 }, {  0,  0, -1,  1 } }, // 7 (A)	  A
+		{ {  0.5f, -0.5f, -0.5f }, {  dx,  dy,  00 }, { 0, 0 }, {  0,  0, -1,  1 } }, // 8 (1)	 * *
+		{ {  0.5f, -0.5f,  0.5f }, {  dx,  dy,  00 }, { 0, 0 }, {  0,  0, -1,  1 } }, // 9 (3)	1 - 3
+		// Back
+		{ {  0.0f,  0.5f,  0.0f }, {  00,  dy,  dx }, { 0, 0 }, { -1,  0,  0,  1 } }, // 10 (A)	  A
+		{ {  0.5f, -0.5f,  0.5f }, {  00,  dy,  dx }, { 0, 0 }, { -1,  0,  0,  1 } }, // 11 (3)	 * *
+		{ { -0.5f, -0.5f,  0.5f }, {  00,  dy,  dx }, { 0, 0 }, { -1,  0,  0,  1 } }, // 12 (2)	3 - 2
+		// Left
+		{ {  0.0f,  0.5f,  0.0f }, { -dx,  dy,  00 }, { 0, 0 }, {  0,  0,  1,  1 } }, // 13 (A)	  A
+		{ { -0.5f, -0.5f,  0.5f }, { -dx,  dy,  00 }, { 0, 0 }, {  0,  0,  1,  1 } }, // 14 (2)	 * *
+		{ { -0.5f, -0.5f, -0.5f }, { -dx,  dy,  00 }, { 0, 0 }, {  0,  0,  1,  1 } }, // 15 (0)	2 - 0
+	};
+
+	indices = {
+		1, 3, 2, 
+		2, 0, 1,
+		4, 6, 5,
+		7, 9, 8,
+		10, 12, 11,
+		13, 15, 14
+	};
+
+	create_buffers();
+}

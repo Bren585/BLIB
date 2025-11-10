@@ -1,7 +1,6 @@
-#include "full_common.hlsli"
+#include "flat_common.hlsli"
 
 cbuffer CONSTANT_BUFFER : register(b0)
 {
-    row_major float4x4 world;
     float4 material_color;
-};
+}

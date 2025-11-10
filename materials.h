@@ -4,13 +4,13 @@
 #include "device.h"
 #include <array>
 
-#define DEFAULT_TEXTURE_MAP		color WHITE
+#define DEFAULT_TEXTURE_MAP		WHITE
 #define DEFAULT_NORMAL_MAP		color {0.5f, 0.5f, 1.0f}
 #define DEFAULT_OCCLUSION		1.0f
 #define DEFAULT_ROUGHNESS		0.5f
 #define DEFAULT_METALLIC		0.0f
 #define DEFAULT_ORM_MAP			color {DEFAULT_OCCLUSION, DEFAULT_ROUGHNESS, DEFAULT_METALLIC}
-#define DEFAULT_EMISSION_MAP	color {0.0f, 0.0f, 0.0f, 0.0f}
+#define DEFAULT_EMISSION_MAP	COLORLESS
 
 namespace BLIB {
 	struct phong {

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "shape.h"
 #include "shader.h"
-#include "viewer.h"
+#include "window.h"
 
 namespace BLIB::debug::draw {
 

@@ -9,20 +9,41 @@ namespace BLIB {
 		std::unique_ptr<view> main_view = nullptr;
 		color background = {0, 0, 0};
 
+		view* active_views[MAX_VIEWS]{ nullptr };
+
+		void bind_all() {
+			unbind();
+
+			ID3D11RenderTargetView* rtvs[MAX_VIEWS] = {nullptr};
+			ID3D11DepthStencilView* dsv{nullptr};
+
+			for (int i = 0; i < MAX_VIEWS; i++) {
+				view*& rt = active_views[i];
+				if (rt) {
+					rtvs[i] = rt->render_target_view.Get();
+					if (!dsv && rt->depth_stencil_view) {
+						dsv = rt->depth_stencil_view.Get();
+					}
+				}
+			}
+
+			device::context()->OMSetRenderTargets(MAX_VIEWS, rtvs, dsv);
+		}
+
 		view::view(IDXGISwapChain* swap_chain) : size(window::size()) {
 			get_back_buffer(swap_chain);
 			shader_resource_view = nullptr;
 			create_depth_stencil();
 		}
 
-		view::view(float2 size) : size(size) {
+		view::view(float2 size, DXGI_FORMAT format) : size(size) {
 			D3D11_TEXTURE2D_DESC tex_desc = {};
 			{
 				tex_desc.Width = (UINT)size.x;
 				tex_desc.Height = (UINT)size.y;
 				tex_desc.MipLevels = 1;
 				tex_desc.ArraySize = 1;
-				tex_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+				tex_desc.Format = format;
 				tex_desc.SampleDesc.Count = 1;
 				tex_desc.Usage = D3D11_USAGE_DEFAULT;
 				tex_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -57,24 +78,42 @@ namespace BLIB {
 
 		void view::create_depth_stencil() {
 			HRESULT hr;
-			D3D11_TEXTURE2D_DESC depth_desc = {};
-			{
-				depth_desc.Width = (UINT)size.x;
-				depth_desc.Height = (UINT)size.y;
-				depth_desc.MipLevels = 1;
-				depth_desc.ArraySize = 1;
-				depth_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-				depth_desc.SampleDesc.Count = 1;
-				depth_desc.SampleDesc.Quality = 0;
-				depth_desc.Usage = D3D11_USAGE_DEFAULT;
-				depth_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-				depth_desc.CPUAccessFlags = 0;
-				depth_desc.MiscFlags = 0;
+			ID3D11Texture2D* depth_tex{}; {
+				D3D11_TEXTURE2D_DESC desc = {};
+				desc.Width				= (UINT)size.x;
+				desc.Height				= (UINT)size.y;
+				desc.MipLevels			= 1;
+				desc.ArraySize			= 1;
+				desc.Format				= DXGI_FORMAT_R24G8_TYPELESS;
+				desc.SampleDesc.Count	= 1;
+				desc.SampleDesc.Quality = 0;
+				desc.Usage				= D3D11_USAGE_DEFAULT;
+				desc.BindFlags			= D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+				desc.CPUAccessFlags		= 0;
+				desc.MiscFlags			= 0;
+
+				hr = device::get()->CreateTexture2D(&desc, nullptr, &depth_tex); VERIFY;
 			}
-			ID3D11Texture2D* depth_tex{};
-			hr = device::get()->CreateTexture2D(&depth_desc, nullptr, &depth_tex); VERIFY;
 			assert(depth_tex);
-			hr = device::get()->CreateDepthStencilView(depth_tex, nullptr, depth_stencil_view.GetAddressOf()); VERIFY;
+			
+			/* Stencil */ {
+				D3D11_DEPTH_STENCIL_VIEW_DESC desc{};
+				desc.Format				= DXGI_FORMAT_D24_UNORM_S8_UINT;
+				desc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
+				desc.Texture2D.MipSlice = 0;
+
+				hr = device::get()->CreateDepthStencilView(depth_tex, &desc, depth_stencil_view.GetAddressOf()); VERIFY;
+			}
+			/* Depth SRV */ {
+				D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
+				desc.Format						= DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+				desc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
+				desc.Texture2D.MipLevels		= 1;
+				desc.Texture2D.MostDetailedMip	= 0;
+
+				hr = device::get()->CreateShaderResourceView(depth_tex, &desc, depth_shader_resource.GetAddressOf()); VERIFY;
+			}
+
 			depth_tex->Release();
 		}
 
@@ -101,24 +140,8 @@ namespace BLIB {
 				back_buffer->Release();
 				tex_desc.Width = static_cast<UINT>(size.x);
 				tex_desc.Height = static_cast<UINT>(size.y);
-
-				//D3D11_TEXTURE2D_DESC tex_desc = {};
-				//{
-				//	tex_desc.Width = (UINT)size.x;
-				//	tex_desc.Height = (UINT)size.y;
-				//	tex_desc.MipLevels = 1;
-				//	tex_desc.ArraySize = 1;
-				//	tex_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-				//	tex_desc.SampleDesc.Count = 1;
-				//	tex_desc.Usage = D3D11_USAGE_DEFAULT;
-				//	tex_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-				//	tex_desc.CPUAccessFlags = 0;
-				//	tex_desc.MiscFlags = 0;
-				//}
-
 				render_target_view.Reset();
 				shader_resource_view.Reset();
-
 				create_back_buffer(tex_desc);
 			}
 
@@ -126,9 +149,18 @@ namespace BLIB {
 			create_depth_stencil();
 		}
 
-		void view::focus() {
-			unbind();
-			device::context()->OMSetRenderTargets(1, render_target_view.GetAddressOf(), depth_stencil_view.Get());
+		void view::focus(int slot) {
+			assert(slot < MAX_VIEWS);
+			if (slot == -1) {
+				for (int i = 0; i < MAX_VIEWS; i++) { cached_views[i] = active_views[i]; active_views[i] = nullptr; }
+				active_views[0] = this;
+			}
+			else {
+				cached_views[slot] = active_views[slot];
+				active_views[slot] = this;
+			}
+			active_in_slot = slot;
+			bind_all();
 
 			D3D11_VIEWPORT viewport{};
 			viewport.TopLeftX = 0;
@@ -142,6 +174,22 @@ namespace BLIB {
 			sprite::set_viewport(size);
 		}
 
+		void view::unfocus() {
+			assert(active_in_slot != -2);
+			if (active_in_slot == -1) {
+				for (int i = 0; i < MAX_VIEWS; i++) { 
+					active_views[i] = cached_views[i];
+					cached_views[i] = nullptr;
+				}
+			}
+			else {
+				active_views[active_in_slot] = cached_views[active_in_slot];
+				cached_views[active_in_slot] = nullptr;
+			}
+			active_in_slot = -2;
+			bind_all();
+		}
+
 		void view::release() {
 			render_target_view.Reset();
 			depth_stencil_view.Reset();
@@ -150,20 +198,20 @@ namespace BLIB {
 
 		void init(IDXGISwapChain* swap_chain) { if (!main_view) main_view = std::make_unique<view>(swap_chain); }
 
-		void clear_main		()											{ RENDER_LOCK;	main_view->clear(background);				}
-		void resize_main	(float2 size, IDXGISwapChain* swap_chain)	{				main_view->resize(size, swap_chain);		}
-		void focus_main		()											{				main_view->focus();							}
-		void release_main	()											{				main_view->release();						}
+		void clear_main				()											{ RENDER_LOCK;	main_view->clear(background);				}
+		void resize_main			(float2 size, IDXGISwapChain* swap_chain)	{				main_view->resize(size, swap_chain);		}
+		void focus_main				()											{				main_view->focus();							}
+		void unfocus_main			()											{				main_view->unfocus();						}
+		void release_main			()											{				main_view->release();						}
+		void set_main_background	(color c)									{				background = c;								}
 
 		void unbind() { 
-			ID3D11RenderTargetView* nullRTV[1] = { nullptr };
-			device::context()->OMSetRenderTargets(1, nullRTV, nullptr);
+			ID3D11RenderTargetView* nullRTV[MAX_VIEWS] = { nullptr };
+			device::context()->OMSetRenderTargets(MAX_VIEWS, nullRTV, nullptr);
 			
-			ID3D11ShaderResourceView* nullSRV[1] = { nullptr }; 
-			device::context()->PSSetShaderResources(0, 1, nullSRV); 
+			ID3D11ShaderResourceView* nullSRV[10] = { nullptr }; 
+			device::context()->PSSetShaderResources(0, 10, nullSRV); 
 		}
-
-		void set_main_background(color c) { background = c; }
 
 	}
 };

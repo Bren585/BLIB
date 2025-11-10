@@ -8,7 +8,7 @@
 #include "sampler.h"
 #include "math.h"
 #include "window.h"
-#include "viewer.h"
+#include "lighting.h"
 #include "input.h"
 #include "text.h"
 #include "entity.h"

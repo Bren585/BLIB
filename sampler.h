@@ -4,8 +4,10 @@ namespace BLIB {
 	namespace sampler {
 		enum state {
 			POINT,
+			CLAMP_POINT,
 			LINEAR,
 			ANISOTROPIC,
+			COMPARE,
 
 			SAMPLER_COUNT,
 			UNDEFINED,

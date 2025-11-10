@@ -2,64 +2,29 @@
 #include "math.h"
 #include "window.h"
 #include <d3d11.h>
-#include <wrl.h>
 
-#define LIGHT_DEFAULT				{ -0.5f, -0.5f, -0.5f }
-#define LIGHT_COLOR_DEFAULT			color WHITE
-#define LIGHT_INTENSITY_DEFAULT		3
-#define LIGHT_INTENSITY_MAX			10
+#define P_EYE_DEFAULT		{ 0.0f, 0.0f, -10.0f }
+#define P_FOCUS_DEFAULT		{ 0.0f, 0.0f, 0.0f }
+#define P_CLIP_DEFAULT		{ 0.1f, 100.0f }
+#define P_FOV_DEFAULT		DirectX::XMConvertToRadians(30.0f)
 
-#define AMBIENT_COLOR_DEFAULT		color WHITE
-#define AMBIENT_INTENSITY_DEFAULT	1
-#define AMBIENT_INTENSITY_MAX		10
-
-#define P_EYE_DEFAULT				{ 0.0f, 0.0f, -10.0f }
-#define P_FOCUS_DEFAULT				{ 0.0f, 0.0f, 0.0f }
-#define P_CLIP_DEFAULT				{ 0.1f, 100.0f }
-#define P_FOV_DEFAULT				DirectX::XMConvertToRadians(30.0f)
-
-#define O_EYE_DEFAULT				{ 0.0f, 0.0f, -1.0f }
-#define O_FOCUS_DEFAULT				{ 0.0f, 0.0f, 0.0f }
-#define O_CLIP_DEFAULT				{ 0.00f, 1.0f }
+#define O_EYE_DEFAULT		{ 0.0f, 0.0f, -1.0f }
+#define O_FOCUS_DEFAULT		{ 0.0f, 0.0f, 0.0f }
+#define O_CLIP_DEFAULT		{ 0.00f, 1.0f }
 
 namespace BLIB {
-
-	namespace viewer {
-
-		struct scene_constants {
-			float4x4 view_projection;
-			float4 light_direction;
-			float4 light_color;
-			float4 ambient_color;
-			float4 camera_position;
-		};
-
-		void init();
-		void uninit();
-
-		float3	get_light				();
-		color	get_light_color			();
-		float	get_light_intensity		();
-		color	get_ambient_color		();
-		float	get_ambient_intensity	();
-
-		void	set_light				(float3 pos);
-		void	set_light_color			(color c);
-		void	set_light_intensity		(float v);
-		void	set_ambient_color		(color c);
-		void	set_ambient_intensity	(float v);
-
-		void	add_light				(float3 pos);
-		void	add_light_color			(color c);
-		void	add_light_intensity		(float v);
-		void	add_ambient_color		(color c);
-		void	add_ambient_intensity	(float v);
-
-	}
-
 	class camera {
+		struct constants {
+			//float4x4 view;
+			float4x4 view_projection;
+			float4x4 inverse_view_projection;
+			//float4x4 inverse_view;
+			//float4x4 inverse_projection;
+			float3 camera_position;
+			float far_z;
+		};
 	private:
-		mutable viewer::scene_constants data;
+		mutable constants data;
 		Microsoft::WRL::ComPtr<ID3D11Buffer> buffer;
 
 		float2 clip_range;
@@ -73,6 +38,9 @@ namespace BLIB {
 		mutable matrix V;
 		mutable matrix P;
 		mutable matrix VP;
+		mutable matrix IV;
+		mutable matrix IP;
+		mutable matrix IVP;
 
 		mutable bool needs_update = true;
 		virtual void _update() const = 0;
@@ -94,9 +62,12 @@ namespace BLIB {
 		void	set_near	(float d)	{ clip_range.x = d;	needs_update = true; }
 		void	set_far		(float d)	{ clip_range.y = d;	needs_update = true; }
 
-		matrix	get_projection()		const { update(); return P; }
-		matrix	get_view()				const { update(); return V; }
-		matrix	get_view_projection()	const { update(); return VP; }
+		const matrix& get_view()					const { update(); return V;		}
+		const matrix& get_projection()				const { update(); return P;		}
+		const matrix& get_view_projection()			const { update(); return VP;	}
+		const matrix& get_inverse_view()			const { update(); return IV;	}
+		const matrix& get_inverse_projection()		const { update(); return IP;	}
+		const matrix& get_inverse_view_projection()	const { update(); return IVP;	}
 
 		void bind() const;
 	};
@@ -134,17 +105,4 @@ namespace BLIB {
 
 		void set_viewport(float2 v) { viewport = v; needs_update = true; }
 	};
-
-	namespace viewer {
-		void set_active(camera* cam);
-		void set_main();
-
-		const camera* peek_main();
-		const camera* peek_active();
-
-		camera* get_main();
-		camera* get_active();
-	}
-
-
 }

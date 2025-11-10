@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "billboard.h"
-#include "viewer.h"
+//#include "camera.h"
 
 using namespace BLIB;
 
@@ -19,9 +19,9 @@ void billboard::set_texture(const sprite* spr) {
 void billboard::set_dynamic(bool on) { dynamic = on; }
 
 void billboard::_basic_update(float elapsed_time) {
-	if (dynamic) { set_ang(to_euler(-viewer::get_active()->get_facing())); }
+	//if (dynamic) { set_ang(to_euler(-camera::get_active()->get_facing())); }
 }
 
-void billboard::_render() const {
-	full::object::_render();
+void billboard::_render(render_settings rs) const {
+	full::object::_render(rs);
 }

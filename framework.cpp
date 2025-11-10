@@ -340,7 +340,7 @@ namespace BLIB {
 		/* INIT */ {
 			render_target::init(swap_chain.Get());
 			input::init();
-			viewer::init();
+			lighting::init();
 			audio::init();
 			HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 		}
@@ -349,6 +349,8 @@ namespace BLIB {
 			render_target::focus_main();
 			sampler::set(sampler::DEFAULT, 0);
 			sampler::set(sampler::LINEAR, 1);
+			sampler::set(sampler::COMPARE, 2);
+			sampler::set(sampler::CLAMP_POINT, 3);
 			stencil::set();
 			blend::set();
 			rasterize::set();
@@ -418,8 +420,17 @@ namespace BLIB {
 		RENDER_LOCK;
 
 #ifdef _DEBUG
-		ImGui::Render();
-		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+		{
+			annotate("ImGui");
+			//if (ImGui::Begin("Breakpoint")) {
+			//	if (ImGui::Button("Break")) {
+			//		assert(false);
+			//	}
+			//}
+			//ImGui::End();
+			ImGui::Render();
+			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+		}
 #endif
 
 		UINT sync_interval{ 0 };
@@ -448,7 +459,6 @@ namespace BLIB {
 
 		CoUninitialize();
 
-		viewer::uninit();
 		audio::uninit();
 
 		active = false;

@@ -20,7 +20,7 @@ namespace BLIB {
 		void set_texture(const sprite* spr);
 		void set_dynamic(bool on = true);
 		void _basic_update(float elapsed_time) override;
-		void _render() const override;
+		void _render(render_settings) const override;
 
 	};
 

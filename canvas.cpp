@@ -19,21 +19,21 @@ void canvas::resize(float2 size) {
 	object::size = size;
 }
 
-void canvas::clear() { RENDER_LOCK; view.clear(background); }
+void canvas::clear() const { RENDER_LOCK; view.clear(background); }
 
-void canvas::draw(renderable* r, render_settings rs) {
+void canvas::draw(renderable* r, render_settings rs) const {
 	if (!r) return;
 	RENDER_LOCK;
 	focus();
 	r->render(rs);
 }
 
-float canvas::type(string s, float2 pos, float2 size, font_name font, color color, float2 align) {
+float canvas::type(string s, float2 pos, float2 size, font_name font, color color, float2 align) const {
 	focus();
 	return text::out(s, pos, size, font, color, align);
 }
 
-void canvas::snapshot_to_sprite(sprite* target) {
+void canvas::snapshot_to_sprite(sprite* target) const {
 	HRESULT hr;
 
 	ID3D11Resource* resource;

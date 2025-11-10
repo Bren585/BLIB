@@ -7,135 +7,10 @@
 
 namespace BLIB {
 
-	// Mesh
-
-	void mesh::create_buffers() {
-		HRESULT hr{ S_OK };
-
-		D3D11_BUFFER_DESC buffer_desc{};
-		D3D11_SUBRESOURCE_DATA subresource_data{};
-
-		buffer_desc.ByteWidth = static_cast<UINT>(sizeof(vertex) * vertices.size());
-		buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-		buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		buffer_desc.CPUAccessFlags = 0;
-		buffer_desc.MiscFlags = 0;
-		buffer_desc.StructureByteStride = 0;
-
-		subresource_data.pSysMem = vertices.data();
-		subresource_data.SysMemPitch = 0;
-		subresource_data.SysMemSlicePitch = 0;
-
-		hr = device::get()->CreateBuffer(&buffer_desc, &subresource_data, vertex_buffer.ReleaseAndGetAddressOf()); VERIFY;
-
-		buffer_desc.ByteWidth = static_cast<UINT>(sizeof(uint32_t) * indices.size());
-		buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		subresource_data.pSysMem = indices.data();
-
-		hr = device::get()->CreateBuffer(&buffer_desc, &subresource_data, index_buffer.ReleaseAndGetAddressOf()); VERIFY;
-
-		if (bind_pose.bones.size() > 0) {
-			buffer_desc.ByteWidth = static_cast<UINT>(bind_pose.bones.size() * sizeof(float4x4));
-			buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-			buffer_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-			buffer_desc.CPUAccessFlags = 0;
-			buffer_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-			buffer_desc.StructureByteStride = sizeof(float4x4);
-
-			hr = device::get()->CreateBuffer(&buffer_desc, nullptr, bone_buffer.GetAddressOf()); VERIFY;
-
-			D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-			srv_desc.Format = DXGI_FORMAT_UNKNOWN;
-			srv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-			srv_desc.Buffer.FirstElement = 0;
-			srv_desc.Buffer.NumElements = static_cast<UINT>(bind_pose.bones.size());
-
-			hr = device::get()->CreateShaderResourceView(bone_buffer.Get(), &srv_desc, bone_srv.GetAddressOf()); VERIFY;
-		}
-	}
-
-	void mesh::update_bone_buffer(std::vector<float4x4>& bone_transforms, bool dump) const {
-		assert(bone_transforms.size() == bind_pose.bones.size());
-		device::context()->UpdateSubresource(bone_buffer.Get(), 0, 0, bone_transforms.data(), 0, 0);
-	}
-
-	void mesh::unwrap_triangles() const {
-		HRESULT hr{ S_OK };
-		
-		D3D11_BUFFER_DESC vertex_desc;
-		D3D11_BUFFER_DESC index_desc{};
-
-		vertex_buffer->GetDesc(&vertex_desc);
-		index_buffer->GetDesc(&index_desc);
-		
-		vertex_desc.Usage			= index_desc.Usage			= D3D11_USAGE_STAGING;
-		vertex_desc.BindFlags		= index_desc.BindFlags		= 0;
-		vertex_desc.CPUAccessFlags	= index_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-
-		ID3D11Buffer* vertex_staging_buffer;
-		ID3D11Buffer* index_staging_buffer;
-
-		hr = device::get()->CreateBuffer(&vertex_desc,	nullptr, &vertex_staging_buffer); VERIFY;
-		hr = device::get()->CreateBuffer(&index_desc,	nullptr, &index_staging_buffer); VERIFY;
-
-		device::context()->CopyResource(vertex_staging_buffer,	vertex_buffer.Get());
-		device::context()->CopyResource(index_staging_buffer,	index_buffer.Get());
-
-		D3D11_MAPPED_SUBRESOURCE vertex_resource;
-		hr = device::context()->Map(vertex_staging_buffer, 0, D3D11_MAP_READ, 0, &vertex_resource); VERIFY;
-		auto* vertices = reinterpret_cast<const vertex*>(vertex_resource.pData);
-
-		D3D11_MAPPED_SUBRESOURCE index_resource;
-		hr = device::context()->Map(index_staging_buffer, 0, D3D11_MAP_READ, 0, &index_resource); VERIFY;
-		auto* indices = reinterpret_cast<const uint32_t*>(index_resource.pData);
-
-		
-		uint32_t index_count = index_desc.ByteWidth / sizeof(uint32_t);
-
-		for (uint32_t i = 0; i < index_count; i += 3) {
-			triangle_mesh.push_back( {
-				vertices[indices[i + 0]].position,
-				vertices[indices[i + 1]].position,
-				vertices[indices[i + 2]].position
-			} );
-		}
-
-		device::context()->Unmap(vertex_staging_buffer, 0);
-		device::context()->Unmap(index_staging_buffer, 0);
-		vertex_staging_buffer->Release();
-		index_staging_buffer->Release();
-
-		unwrapped = true;
-	}
-
-	uint32_t mesh::ray_collision(const transform& model_transform, const float3& origin, const float3& ray, float3* out_int_point, float3* out_int_normal, bool any_hit) const {
-		uint32_t hit = 0;
-
-		for (const auto& triangle : peek_triangles()) {
-			float3 int_point;
-			float3 int_normal;
-
-			if (triangle_intersection(triangle * model_transform, origin, ray, out_int_point ? &int_point : nullptr, out_int_normal ? &int_normal : nullptr)) {
-				if (any_hit) { return 1; }
-
-				if (out_int_point && out_int_normal) {
-					if ((hit == 0) || (int_point - origin).mag_sq() < (*out_int_point - origin).mag_sq()) {
-						*out_int_point = int_point;
-						*out_int_normal = int_normal;
-					}
-				}
-				hit++;
-			}
-		}
-
-		return hit;
-	}
-	
 	// Model 
 
-	void model::create_shaders(std::string cso) {
+	void model::create_shaders(std::string vs_cso) {
 		HRESULT hr{ S_OK };
-		vs_cso = cso;
 
 		_ASSERT_EXPR_A(input_element_desc.size() > 0, "Shader Inputs Not Set");
 
@@ -155,16 +30,77 @@ namespace BLIB {
 	// Model Animation
 
 	void model::update(float elapsed_time) {
+		bool was_animating = is_animating();
+		bool skip = false;
 		if (transition != -2) {
-			if (!animations.at(transition).update(elapsed_time)) { transition = -2; }
+			if (!animations.at(transition).update(elapsed_time)) { transition = -2; } // transition ended before sequence, abort
 			else {
 				transition_timer += elapsed_time;
-				if (transition_timer > transition_duration) { sequence = transition; transition = -2; return; }
+				if (transition_timer > transition_duration) { sequence = transition; transition = -2; skip = true; }
 			}
 		}
+		if (sequence != -2 && !skip) {
+			if (!animations.at(sequence).update(elapsed_time)) { sequence = transition; transition = -2; }
+		}
+		
+		update_meshes(was_animating);
+	}
 
-		if (sequence == -2) return;
-		if (!animations.at(sequence).update(elapsed_time)) { sequence = transition ? transition : -2; transition = -2; }
+	void model::update_meshes(bool force) {
+		if (is_animating() || force) {
+			animation::keyframe blended_frame;
+			if (is_animating()) {
+				if (transition != -2) { blend_keyframes(animations.at(sequence).get_keyframe(), animations.at(transition).get_keyframe(), transition_timer / transition_duration, blended_frame); }
+				else { blended_frame = animations.at(sequence).get_keyframe(); }
+			}
+
+			for (const mesh& mesh : meshes) {
+				const float4x4& mesh_global		= (is_animating() ? blended_frame.at((int)mesh.node_index).global_transform : mesh.default_global_transform);
+				const matrix	world			= DirectX::XMLoadFloat4x4(&mesh_global) * DirectX::XMLoadFloat4x4(&coordinate_system_transforms[coord_sys]);
+				const matrix	world_normal	= transpose(inverse3x3(world));
+
+				std::vector<matrix> bone_transforms;
+				if (is_animating()) {
+					const size_t bone_count = mesh.bind_pose.bones.size();
+					bone_transforms.resize(bone_count);
+					for (size_t i = 0; i < bone_count; i++) {
+						bone_transforms[i] = DirectX::XMMatrixTranspose( // Shader wants transposed
+							DirectX::XMLoadFloat4x4(&mesh.bind_pose.bones[i].offset_transform) *
+							DirectX::XMLoadFloat4x4(&blended_frame.at((int)mesh.bind_pose.bones[i].node_index).global_transform) *
+							DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&mesh.default_global_transform))
+						);
+					}
+				}
+				else {
+					bone_transforms.push_back(DirectX::XMLoadFloat4x4(&matrix_id));
+				}
+
+				std::vector<vertex> vertices;
+				const size_t vertex_count = mesh.vertices.size();
+				vertices.resize(vertex_count);
+				for (size_t i = 0; i < vertex_count; i++) {
+					const vertex& v = mesh.vertices.at(i);
+					float3 weighted_position;
+					float3 weighted_normal;
+					float4 weighted_tangent;
+					for (int w = 0; w < MAX_BONE_INF; w++) {
+						const float	weight			= v.bone_weights[w];
+						matrix		bone_transform	= bone_transforms.at(is_animating() ? v.bone_indices[w] : 0);
+						weighted_position	+= weight * mul(v.position, bone_transform);
+						bone_transform.r[3]  = DirectX::XMVectorSet( 0, 0, 0, 1 );
+						weighted_normal		+= weight * mul_normal(v.normal,	bone_transform);
+						weighted_tangent	+= weight * mul_normal(v.tangent,	bone_transform);
+					}
+					vertex& out = vertices.at(i);
+					out.position	= mul(weighted_position, world);
+					out.normal		= mul_normal(weighted_normal, world_normal);
+					out.tangent		= mul_normal(weighted_tangent, world_normal);
+					out.texcoord	= v.texcoord;
+				}
+
+				mesh.update_buffers(vertices);
+			}
+		}
 	}
 
 	void model::animate(int animation_id, float enter_time, bool loop) {
@@ -178,7 +114,7 @@ namespace BLIB {
 	const animation::keyframe* model::get_keyframe() const {
 		if (sequence == -2) { return nullptr; }
 		if (transition != -2) {
-			blend_animations(animations.at(sequence).get_keyframe(), animations.at(transition).get_keyframe(), transition_timer / transition_duration, temp_frame);
+			blend_keyframes(animations.at(sequence).get_keyframe(), animations.at(transition).get_keyframe(), transition_timer / transition_duration, temp_frame);
 			return &temp_frame;
 		}
 		else { return &animations.at(sequence).get_keyframe(); }
@@ -189,11 +125,12 @@ namespace BLIB {
 	int primitive_detail = 12;
 	void set_primitive_detail(int level) { primitive_detail = level; }
 
-	model* create_cube		(float3 min, float3 max)		{ return new custom_cube(min, max);							}
-	model* create_sphere	()								{ return new sphere		(primitive_detail);					}
-	model* create_cylinder	()								{ return new cylinder	(primitive_detail);					}
-	model* create_capsule	(float height, float radius)	{ return new capsule	(height, radius, primitive_detail); }
-	model* create_quad		()								{ return new quad;											}
+	model* create_cube			(float3 min, float3 max)		{ return new custom_cube	(min, max);							}
+	model* create_sphere		()								{ return new sphere			(primitive_detail);					}
+	model* create_cylinder		()								{ return new cylinder		(primitive_detail);					}
+	model* create_capsule		(float height, float radius)	{ return new capsule		(height, radius, primitive_detail); }
+	model* create_quad			()								{ return new quad;												}
+	model* create_rect_pyramid	()								{ return new rect_pyramid;										}		
 
 	void load_texture(model* dest, const string filename, texture_type slot, float3* out_aspect) {
 		geometric_primitive* primitive = dynamic_cast<geometric_primitive*>(dest);

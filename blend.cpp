@@ -22,6 +22,17 @@ namespace BLIB {
 			blend_desc.RenderTarget[0].BlendEnable = TRUE;
 			blend_desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
+			for (int i = 1; i < 8; i++) {
+				blend_desc.RenderTarget[i].BlendEnable = FALSE;
+				blend_desc.RenderTarget[i].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+				//blend_desc.RenderTarget[i].SrcBlend = D3D11_BLEND_ONE;
+				//blend_desc.RenderTarget[i].DestBlend = D3D11_BLEND_ZERO;
+				//blend_desc.RenderTarget[i].BlendOp = D3D11_BLEND_OP_ADD;
+				//blend_desc.RenderTarget[i].SrcBlendAlpha = D3D11_BLEND_ONE;
+				//blend_desc.RenderTarget[i].DestBlendAlpha = D3D11_BLEND_ZERO;
+				//blend_desc.RenderTarget[i].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+			}
+
 			switch (state) {
 			case NONE:
 			{

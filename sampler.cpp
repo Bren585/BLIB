@@ -7,7 +7,7 @@ using Microsoft::WRL::ComPtr;
 namespace BLIB {
 
 	namespace sampler {
-		map<state, ComPtr<ID3D11SamplerState>> sampler_states = map<state, ComPtr<ID3D11SamplerState>>();
+		map<state, ComPtr<ID3D11SamplerState>> sampler_states;
 		state current_state = UNDEFINED;
 
 		ID3D11SamplerState*const* get(state state) {
@@ -35,11 +35,24 @@ namespace BLIB {
 			case POINT:
 				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
 				break;
+			case CLAMP_POINT:
+				sampler_desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+				sampler_desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+				sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+				break;
 			case LINEAR:
 				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 				break;
 			case ANISOTROPIC:
 				sampler_desc.Filter = D3D11_FILTER_ANISOTROPIC;
+				break;
+			case COMPARE:
+				sampler_desc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+				sampler_desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+				sampler_desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+				sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+				sampler_desc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
 				break;
 			default:
 				_ASSERT_EXPR(false, L"Invalid Sampler State");

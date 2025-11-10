@@ -16,7 +16,7 @@ namespace BLIB {
 			virtual void sync_collider() = 0;
 
 			virtual void _basic_update(float elapsed_time) = 0;
-			virtual void _render() const = 0;
+			virtual void _render(render_settings settings) const = 0;
 
 		public: // Inherit as Protected
 			color tint;
@@ -24,7 +24,7 @@ namespace BLIB {
 		public: // Redefine as Public
 			object(color c = WHITE) : tint(c) {}
 			virtual ~object() = default;
-			inline void render(render_settings settings = {}) const { (default_settings & settings).set(); _render(); }
+			inline void render(render_settings settings = {}) const { _render(default_settings & settings); }
 
 			inline void update(float elapsed_time) { _basic_update(elapsed_time); sync_collider(); }
 
@@ -51,7 +51,7 @@ namespace BLIB {
 				static_cast<collider*>(collision.get())->sync(pos, scale, angle); 
 			}
 			
-			virtual void _render() const override { if (spr) spr->render(bl(), size * scale, tpos, tsize, angle, pivot, tint); }
+			virtual void _render(render_settings settings) const override { if (spr) { settings.set(); spr->render(bl(), size * scale, tpos, tsize, angle, pivot, tint); } }
 			virtual void _basic_update(float elapsed_time) override {}
 
 		public: // Inherit as Protected
@@ -68,8 +68,8 @@ namespace BLIB {
 
 			sprite* peek_sprite() { return spr.get(); }
 
-			object()				: spr(nullptr),														angle(0),		scale(1),		pivot(C_BL)																		{ set_settings("default_flat"); }
-			object(string file)		: spr(std::make_unique<sprite>(file)),	filename(file),				angle(0),		scale(1),		pivot(C_BL)																		{ set_settings("default_flat"); tsize = size = spr->get_size(); }
+			object()				: spr(nullptr),														angle(0),		scale(1),		pivot(C_BL)																		{ set_settings({ pixel_shader("default_flat") }); }
+			object(string file)		: spr(std::make_unique<sprite>(file)),	filename(file),				angle(0),		scale(1),		pivot(C_BL)																		{ set_settings({ pixel_shader("default_flat"), vertex_shader(sprite::get_default_vs()) }); tsize = size = spr->get_size(); }
 			object(const object& o) : spr(o.spr->clone()),					filename(o.filename),		angle(o.angle), scale(o.scale),	pivot(o.pivot), pos(o.pos), size(o.size), tpos(o.tpos), generic::object(o.tint) { set_settings(o.get_settings()); }
 			virtual ~object() = default;
 
@@ -77,9 +77,10 @@ namespace BLIB {
 
 		public: // Redefine as Public after Protected Inheritence
 			
-			void load_sprite(string file)			{ filename = file;	spr = std::make_unique<sprite>(file);		tsize = size = spr->get_size();	}
-			void set_sprite(sprite* new_sprite)		{					spr.reset(new_sprite);		if (spr)		tsize = size = spr->get_size();	}
-			void make_dummy(color c)				{					spr = std::make_unique<sprite>(c, 1.0f);	tsize = size = 1.0f;			}
+			void load_sprite(string file)			{ filename = file;		spr = std::make_unique<sprite>(file);		tsize = size = spr->get_size();	add_settings(sprite::get_default_vs());		}
+			void copy_sprite(sprite* old_sprite)	{ assert(old_sprite);	spr.reset(old_sprite->clone());				tsize = size = spr->get_size();	add_settings(sprite::get_default_vs());		}
+			void set_sprite(sprite* new_sprite)		{						spr.reset(new_sprite);		if (spr)	  { tsize = size = spr->get_size();	add_settings(sprite::get_default_vs()); }	}
+			void make_dummy(color c)				{						spr = std::make_unique<sprite>(c, 1.0f);	tsize = size = 1.0f;			add_settings(sprite::get_default_vs());		}
 
 			inline float2 get_spr_size() const { if (spr) return spr->get_size(); else return 0; }
 
@@ -99,12 +100,12 @@ namespace BLIB {
 		protected:
 			void sync_collider() override { static_cast<collider*>(collision.get())->sync(trans); }
 			
-			virtual void _render() const override { if (mdl) mdl->render(trans, tint); }
+			virtual void _render(render_settings settings) const override { if (mdl) { settings.set(); mdl->render(trans, tint); } }
 			virtual void _basic_update(float elapsed_time) override { if (mdl) mdl->update(elapsed_time); }
 
 		public: // Inherit as Protected
-			object()				: mdl(nullptr)													{ set_settings({"default_full"}); }
-			object(const object& o) : mdl(o.mdl->clone()), trans(o.trans), generic::object(o.tint)	{ set_settings(o.get_settings()); }
+			object()				: mdl(nullptr)													{ set_settings({ pixel_shader("defualt_full") });	}
+			object(const object& o) : mdl(o.mdl->clone()), trans(o.trans), generic::object(o.tint)	{ set_settings(o.get_settings());					}
 			virtual ~object() = default;
 
 			object& operator=(const object& o) { mdl = (o.mdl ? o.mdl->clone() : nullptr); trans = o.trans; tint = o.tint; return *this; }
@@ -113,8 +114,8 @@ namespace BLIB {
 
 			model*			get_model()						{ return mdl.get(); }
 			const model*	get_model() const				{ return mdl.get(); }
-			void			set_model(model* m)				{ mdl.reset(m);		}
-			void			copy_model(const model* m)		{ mdl = m->clone(); }
+			void			set_model(model* m)				{ mdl.reset(m);		add_settings({ vertex_shader("default_full") }); }
+			void			copy_model(const model* m)		{ mdl = m->clone(); add_settings({ vertex_shader("default_full") }); }
 
 			transform		get_trans()	const				{ return trans; }
 			void			set_trans(const transform& t)	{ trans = t; }
