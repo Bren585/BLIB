@@ -12,20 +12,21 @@ namespace BLIB {
 		inline static string	background_filename = L"-1";
 		inline static string	load_icon_filename	= L"-1";
 		inline static string	load_text			= "Loading...";
+		inline static font_name load_font			= FONT_3;
 
 	public:
 		static void set_background	(color c)		{ background_color = c; }
 		static void set_background	(string file)	{ background_filename = file; }
 		static void set_load_icon	(string file)	{ load_icon_filename = file; }
 		static void set_text		(string text)	{ load_text = text; }
-		static void set_text_color	(color c)		{ text_color = c;}
+		static void set_text_color	(color c)		{ text_color = c; }
+		static void set_text_font	(font_name f)	{ load_font = f; }
 
 	};
 
-	template <class S>
 	class load_scene : public flat::scene, load_scene_any {
 	private:
-		scene_id scene_id;
+		task_id scene_id;
 		int slot;
 		flat::object background;
 		flat::object load_icon;
@@ -34,28 +35,31 @@ namespace BLIB {
 		float		exit_duration;
 
 	public:
-		template<typename... Args>
+		load_scene(task_id id, int slot, transition t = transition::none, float duration = 0) : slot(slot), scene_id(id), exit_transition(t), exit_duration(duration) { canvas::set_background(background_color); }
+		
+		template<class S, typename... Args>
 		load_scene(int slot, transition t = transition::none, float duration = 0, Args&&... args) : slot(slot), scene_id(manager::add(new S(std::forward<Args>(args)...))), exit_transition(t), exit_duration(duration) { canvas::set_background(background_color); }
+
 
 		inline void init() override {
 
 			if (background_filename != L"-1") {
 				background.load_sprite(background_filename);
 				background.pivot = C_BL;
-				background.size = window::size().x;
+				background.set_size(float2{ window::size().x });
 			}
 
 			if (load_icon_filename != L"-1") {
 				load_icon.load_sprite(load_icon_filename);
 				load_icon.pivot = C_CC;
-				load_icon.size = 100;
+				load_icon.set_size(float2{ 100 });
 				load_icon.pos = { window::size().x - 100.0f, 100.0f };
 			}
 		}
 
-		void update	(float elapsed_time)		override { if (manager::peek(scene_id)->report() == status::active) { manager::stage(scene_id, slot, exit_transition, exit_duration); state = complete; } idle(elapsed_time); }
+		void update	(float elapsed_time)		override { if (manager::peek_task(scene_id)->report() != status::unloaded) { manager::stage(scene_id, slot, exit_transition, exit_duration); finish(); } idle(elapsed_time); }
 		void idle	(float elapsed_time)		override { load_icon.angle += 60 * elapsed_time; }
-		void draw	(render_settings)	const	override { background.render(); text::out(load_text, 0, 100, FONT_3, text_color); load_icon.render(); }
+		void draw	(render_settings)	const	override { background.render(); text::out(load_text, float2{0}, float2{100}, load_font, text_color, C_BL); load_icon.render(); }
 		void kill	()							override { /*if (manager::peek(scene_id)->report() != status::active) manager::kill(scene_id);*/ }
 
 	};

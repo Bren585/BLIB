@@ -9,6 +9,7 @@
 
 #define SHADOW_MAP_SIZE					4096
 #define MAX_SHADOWS						8
+#define MAX_LIGHTS						32
 
 namespace BLIB {
 

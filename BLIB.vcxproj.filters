@@ -81,6 +81,12 @@
     <Filter Include="source\cameras">
       <UniqueIdentifier>{ce2d9e8c-fd98-46ec-b843-b30954abcbec}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders\gs">
+      <UniqueIdentifier>{69c84076-cc2f-4be4-8f14-eb5470b13344}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="math">
+      <UniqueIdentifier>{67ac3a37-bd2d-4bab-b866-50c54ed6c765}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -140,9 +146,6 @@
     <ClCompile Include="collider.cpp">
       <Filter>source\game objects</Filter>
     </ClCompile>
-    <ClCompile Include="billboard.cpp">
-      <Filter>source\game objects</Filter>
-    </ClCompile>
     <ClCompile Include="window.cpp">
       <Filter>source</Filter>
     </ClCompile>
@@ -194,13 +197,13 @@
     <ClCompile Include="mesh.cpp">
       <Filter>source\models</Filter>
     </ClCompile>
+    <ClCompile Include="billboard.cpp">
+      <Filter>source\models</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>pch</Filter>
-    </ClInclude>
-    <ClInclude Include="math.h">
-      <Filter>independants</Filter>
     </ClInclude>
     <ClInclude Include="string.h">
       <Filter>independants</Filter>
@@ -212,9 +215,6 @@
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="input.h">
-      <Filter>headers</Filter>
-    </ClInclude>
-    <ClInclude Include="scene.h">
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="status.h">
@@ -278,9 +278,6 @@
       <Filter>headers\game objects</Filter>
     </ClInclude>
     <ClInclude Include="interfaces.h">
-      <Filter>headers\game objects</Filter>
-    </ClInclude>
-    <ClInclude Include="billboard.h">
       <Filter>headers\game objects</Filter>
     </ClInclude>
     <ClInclude Include="collider.h">
@@ -376,6 +373,48 @@
     <ClInclude Include="lights.h">
       <Filter>headers\pipeline</Filter>
     </ClInclude>
+    <ClInclude Include="scene.h">
+      <Filter>headers\scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="billboard.h">
+      <Filter>headers\models</Filter>
+    </ClInclude>
+    <ClInclude Include="math.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="math_main.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="float2.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="float3.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="float4.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="float3x3.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="color.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="float4x4.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="matrix.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="transform.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="triangle.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="quaternion.h">
+      <Filter>math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="default_flat_vs.hlsl">
@@ -414,6 +453,18 @@
     <FxCompile Include="shadow_ps.hlsl">
       <Filter>shaders\ps</Filter>
     </FxCompile>
+    <FxCompile Include="billboard_vs.hlsl">
+      <Filter>shaders\vs</Filter>
+    </FxCompile>
+    <FxCompile Include="billboard_gs.hlsl">
+      <Filter>shaders\gs</Filter>
+    </FxCompile>
+    <FxCompile Include="default_flat_gs.hlsl">
+      <Filter>shaders\gs</Filter>
+    </FxCompile>
+    <FxCompile Include="uv_test_ps.hlsl">
+      <Filter>shaders\ps</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="flat_common.hlsli">
@@ -434,7 +485,7 @@
     <None Include="math_constants.hlsli">
       <Filter>shaders\hlsli</Filter>
     </None>
-    <None Include="flat_vs.hlsli">
+    <None Include="flat_ps.hlsli">
       <Filter>shaders\hlsli</Filter>
     </None>
     <None Include="inverse.hlsli">
@@ -447,6 +498,12 @@
       <Filter>shaders\hlsli</Filter>
     </None>
     <None Include="camera.hlsli">
+      <Filter>shaders\hlsli</Filter>
+    </None>
+    <None Include="billboard.hlsli">
+      <Filter>shaders\hlsli</Filter>
+    </None>
+    <None Include="flat_gs.hlsli">
       <Filter>shaders\hlsli</Filter>
     </None>
   </ItemGroup>

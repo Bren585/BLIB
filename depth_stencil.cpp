@@ -15,27 +15,27 @@ namespace BLIB {
 			if (it != rasterizer_states.end()) { return it->second.Get(); }
 
 			HRESULT hr{ S_OK };
-			D3D11_DEPTH_STENCIL_DESC ds_desc{};
+			D3D11_DEPTH_STENCIL_DESC desc{};
 
 			//rast_desc defaults
-			ds_desc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+			desc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
 
 			switch (state) {
 			case DEPTH_MASK:
-				ds_desc.DepthEnable = TRUE;
-				ds_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+				desc.DepthEnable = TRUE;
+				desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 				break;
 			case DEPTH_NONE:
-				ds_desc.DepthEnable = TRUE;
-				ds_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+				desc.DepthEnable = TRUE;
+				desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 				break;
 			case SURFACE_MASK:
-				ds_desc.DepthEnable = FALSE;
-				ds_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+				desc.DepthEnable = FALSE;
+				desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 				break;
 			case SURFACE_NONE:
-				ds_desc.DepthEnable = FALSE;
-				ds_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+				desc.DepthEnable = FALSE;
+				desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 				break;
 			default:
 				_ASSERT_EXPR(false, L"Invalid Rasterizer State");
@@ -43,7 +43,7 @@ namespace BLIB {
 
 			rasterizer_states.insert(std::make_pair(state, ComPtr<ID3D11DepthStencilState>()));
 			auto jt = rasterizer_states.find(state);
-			hr = device::get()->CreateDepthStencilState(&ds_desc, jt->second.GetAddressOf()); VERIFY;
+			hr = device::get()->CreateDepthStencilState(&desc, jt->second.GetAddressOf()); VERIFY;
 
 			return jt->second.Get();
 		}

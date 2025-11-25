@@ -1,27 +1,28 @@
 #pragma once
-#include "geometric_primitive.h"
-#include "object.h"
-#include "canvas.h"
+#include "model.h"
 
 namespace BLIB {
 
-	class billboard : public full::object {
+	class billboard : public model, public mesh {
 	private:
-		quad* quad_ptr = nullptr;
-		bool dynamic;
+		virtual billboard* clone_impl() const override { return new billboard(*this); }
+		virtual void render(const float4x4& world, const color& material_color) const override;
+		const std::vector<triangle> dummy_triangles;
 
 	public:
-		billboard(							bool dynamic = true) : dynamic	(dynamic) { set_model(create_quad());	}
-		billboard(const string filename,	bool dynamic = true) : billboard(dynamic) { set_texture(filename);		}
-		billboard(const sprite* spr,		bool dynamic = true) : billboard(dynamic) { set_texture(spr);			}
-		virtual ~billboard() = default;
+		billboard(float2 size = float2{ 1 });
 
-		void set_texture(const string filename);
-		void set_texture(const sprite* spr);
-		void set_dynamic(bool on = true);
-		void _basic_update(float elapsed_time) override;
-		void _render(render_settings) const override;
+		inline void load_texture(const string& filename, texture_type slot = texture_map)										{ materials[0].textures[slot] = std::make_unique<material_texture_file>(filename);	materials[0].textures[slot]->construct(); }
+		inline void make_texture(color c, texture_type slot = texture_map)														{ materials[0].textures[slot] = std::make_unique<material_texture_dummy>(c);		materials[0].textures[slot]->construct(); }
+		inline void copy_texture(const Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& SRV, texture_type slot = texture_map)	{ SRV.CopyTo(materials[0].textures[slot]->data->get_release_SRV());					materials[0].textures[slot]->construct(); }
 
+		inline auto& get_texture(texture_type slot = texture_map) { return materials[0].textures[slot]; }
+
+		inline float3						get_size		() const override { return float3{0}; }
+		inline const std::vector<triangle>& peek_triangles	() const override { return dummy_triangles; }
+		inline uint32_t						ray_collision	(const transform& model_transform, const float3& origin, const float3& ray, float3* out_int_point, float3* out_int_normal, bool any_hit = false) const override { return 0; }
+
+		render_settings default_rs() const override { return { vertex_shader("billboard"), geometry_shader("billboard") }; }
 	};
 
 }

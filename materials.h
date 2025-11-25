@@ -64,7 +64,7 @@ namespace BLIB {
 		material_texture_dummy(color c) : c(c) {}
 		material_texture_dummy(const material_texture_dummy&) = delete;
 		material_texture_dummy(material_texture_dummy&&) = default;
-		void force_construct() override { data = std::make_unique<sprite>(c, 1.0f); }
+		void force_construct() override { data = std::make_unique<sprite>(c, float2{ 1.0f }); }
 		SERIALIZE_BASE(material_texture, c)
 	};
 

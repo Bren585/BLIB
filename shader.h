@@ -22,8 +22,9 @@ namespace BLIB {
 		}
 	}
 
-	struct pixel_shader		: shader::_private::shader_base { explicit pixel_shader	(string name) : shader_base(name) {} };
-	struct vertex_shader	: shader::_private::shader_base { explicit vertex_shader(string name) : shader_base(name) {} };
+	struct pixel_shader		: shader::_private::shader_base { explicit pixel_shader		(string name) : shader_base(name) {} };
+	struct vertex_shader	: shader::_private::shader_base { explicit vertex_shader	(string name) : shader_base(name) {} };
+	struct geometry_shader	: shader::_private::shader_base { explicit geometry_shader	(string name) : shader_base(name) {} };
 
 	namespace shader {
 		void set_filepath(const string& path);
@@ -39,6 +40,10 @@ namespace BLIB {
 		void load_ps(const string& ps_name);
 
 		void set_ps(const string& ps_name);
+
+		void load_gs(const string& gs_name);
+
+		void set_gs(const string& gs_name);
 	}
 
 }

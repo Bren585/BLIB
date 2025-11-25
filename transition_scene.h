@@ -9,8 +9,8 @@ namespace BLIB {
 		generic::scene* to_scene;
 		generic::scene* from_scene;
 
-		scene_id to_scene_id = 0;
-		scene_id from_scene_id = 0;
+		task_id to_scene_id = 0;
+		task_id from_scene_id = 0;
 
 		const int slot;
 
@@ -29,7 +29,7 @@ namespace BLIB {
 			manager::unstage(from_scene_id);
 		}
 
-		void update	(float elapsed_time)	override { if (timer > duration) {state = complete;} }
+		void update	(float elapsed_time)	override { if (timer > duration) { finish(); } }
 		void idle	(float elapsed_time)	override {}
 
 		void draw(render_settings) const override {

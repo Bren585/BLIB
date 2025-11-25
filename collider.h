@@ -6,7 +6,8 @@
 
 // MESH COLLISIONS ARE DISABLED FOR PERFORMANCE, RAY PICKING IS AVAILABLE
 
-#define NO_COLLISION {-1, 0}
+#define NO_COLLISION_2 {-1, {0, 0}}
+#define NO_COLLISION_3 {-1, {0, 0, 0}}
 
 #define NO_HIT FLT_MAX
 #define ANY_HIT 1.0f
@@ -129,7 +130,7 @@ namespace BLIB::flat {
 	class collider : public generic::collider {
 	protected:
 		float2 offset;
-		float2 scale = 1;
+		float2 scale{1};
 
 		float2 parent_position;
 		float2 parent_scale;
@@ -261,7 +262,7 @@ namespace BLIB::full {
 	class collider : public generic::collider {
 	protected:
 		float3		offset;
-		float3		scale = 1;
+		float3		scale{ 1 };
 		transform	trans;
 
 		mutable std::unique_ptr<model> debug_model = nullptr;
@@ -273,7 +274,7 @@ namespace BLIB::full {
 	public:
 		collider(collider* parent = nullptr) : generic::collider(parent) {}
 
-		virtual void sync(const transform& t) { trans = t; trans.set_pvt(0); trans.add_pos(float3x3(trans.get_ang()).rotate(offset)); for (auto& child : children) { static_cast<collider*>(child.get())->sync(trans); } }
+		virtual void sync(const transform& t) { trans = t; trans.set_pvt(float3{0}); trans.add_pos(trans.get_qtn().rotate(offset)); for (auto& child : children) { static_cast<collider*>(child.get())->sync(trans); } }
 		const transform& get_trans() const { return trans; }
 
 		void set_off(float3 o) { offset = o; }
@@ -330,19 +331,19 @@ namespace BLIB::full {
 	class box_collider : public collider {
 	private:
 		float3 size;
-		float3 rotation;
+		quaternion quat;
 
-		box_collider* clone_impl(generic::collider* parent) override { return new box_collider(static_cast<collider*>(parent), size, rotation); }
+		box_collider* clone_impl(generic::collider* parent) override { return new box_collider(static_cast<collider*>(parent), size, quat); }
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
 		void _render_debug(render_settings rs) const override;
 
 	public:
-		box_collider(collider* parent, float3 size, float3 rotation) : collider(parent), size(size), rotation(rotation) {}
+		box_collider(collider* parent, float3 size, quaternion quat) : collider(parent), size(size), quat(quat) {}
 
-		float3 get_size()		const { return size * get_scl(); }
-		float3 get_rotation()	const { return rotation + trans.get_ang(); }
+		float3		get_size()			const { return size * get_scl(); }
+		quaternion	get_quaternion()	const { return quat * trans.get_qtn(); }
 
 		operator aabb_collider() const;
 
@@ -486,9 +487,9 @@ namespace BLIB::full {
 	public:
 		plane_collider(collider* parent, float3 n) : collider(parent), normal(n) {}
 
-		float3 get_normal() const { return normal; }
+		float3 get_normal() const { return trans.get_qtn().rotate(normal); }
 
-		operator aabb_collider() const { return aabb_collider(nullptr, FLT_MAX); } // always collide
+		operator aabb_collider() const { return aabb_collider(nullptr, float3{ FLT_MAX }); } // always collide
 
 		collision collide(const collider* o) const override { return o->collide_with(this); };
 

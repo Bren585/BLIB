@@ -6,18 +6,6 @@
 
 namespace BLIB {
 
-	struct vertex {
-		float3		position;
-		float3		normal		{ 0, 1, 0 };
-		float2		texcoord;
-		float4		tangent		{ 1, 0, 0, 1 };
-
-		float		bone_weights[MAX_BONE_INF]{ 1, 0, 0, 0 };
-		uint32_t	bone_indices[MAX_BONE_INF]{};
-
-		SERIALIZE(position, normal, texcoord, bone_weights, bone_indices)
-	};
-
 	struct bone_inf {
 		uint32_t	index;
 		float		weight;
@@ -61,12 +49,24 @@ namespace BLIB {
 	};
 
 	struct mesh {
-	private:
+		struct vertex {
+			float3		position;
+			float3		normal{ 0, 1, 0 };
+			float2		texcoord;
+			float4		tangent{ 1, 0, 0, 1 };
+
+			float		bone_weights[MAX_BONE_INF]{ 1, 0, 0, 0 };
+			uint32_t	bone_indices[MAX_BONE_INF]{};
+
+			SERIALIZE(position, normal, texcoord, bone_weights, bone_indices)
+		};
+	protected:
 		mutable Microsoft::WRL::ComPtr<ID3D11Buffer>		vertex_buffer;
 		mutable Microsoft::WRL::ComPtr<ID3D11Buffer>		index_buffer;
 		//Microsoft::WRL::ComPtr<ID3D11Buffer>				bone_buffer;
 		//Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	bone_srv;
 
+	private:
 		mutable bool unwrapped = false;
 		mutable std::vector<triangle> triangle_mesh;
 

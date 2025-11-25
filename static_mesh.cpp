@@ -17,8 +17,8 @@ static_mesh::static_mesh(const string& obj_filename, bool uv_inverse = false) {
 	vector<int>	   tangent_counts;
 	vector<string> mtl_filenames;
 
-	maximum = { 0 };
-	minimum = { 0 };
+	maximum = float3{ 0 };
+	minimum = float3{ 0 };
 
 	std::wifstream fin(obj_filename.wide());
 	_ASSERT_EXPR(fin, L"OBJ file not found.");
@@ -107,7 +107,7 @@ static_mesh::static_mesh(const string& obj_filename, bool uv_inverse = false) {
 			float2 deltaUV1		= v1.texcoord - v0.texcoord;
 			float2 deltaUV2		= v2.texcoord - v0.texcoord;
 
-			float3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) / tangent_cross(deltaUV1, deltaUV2);
+			float3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) / (deltaUV1 % deltaUV2);
 			v0.tangent += tangent;
 			v1.tangent += tangent; 
 			v2.tangent += tangent; 

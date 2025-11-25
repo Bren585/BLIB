@@ -8,7 +8,7 @@ Texture2D       normal_map      : register(t1);
 Texture2D       orm_map         : register(t2);
 Texture2D       emissive_map    : register(t3);
 
-PS_OUT main(VS_OUT pin)
+PS_OUT main(PS_IN pin)
 {
     PS_OUT pout;
     

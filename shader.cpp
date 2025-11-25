@@ -8,8 +8,9 @@ struct vertex_shader_data {
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> input_layout;
 };
 
-std::map<string, vertex_shader_data> vertex_shaders							= { { NULL_SHADER, {nullptr, nullptr}} };
-std::map<string, Microsoft::WRL::ComPtr<ID3D11PixelShader>>	pixel_shaders	= { { NULL_SHADER, nullptr } };
+std::map<string, vertex_shader_data>							vertex_shaders		= { { NULL_SHADER, {nullptr, nullptr}} };
+std::map<string, Microsoft::WRL::ComPtr<ID3D11PixelShader>>		pixel_shaders		= { { NULL_SHADER, nullptr } };
+std::map<string, Microsoft::WRL::ComPtr<ID3D11GeometryShader>>	geometry_shaders	= { { NULL_SHADER, nullptr } };
 
 string filepath = "-1";
 
@@ -61,6 +62,27 @@ static HRESULT create_ps_from_cso(const string& ps_name, ID3D11PixelShader** pix
 	return hr;
 }
 
+static HRESULT create_gs_from_cso(const string& gs_name, ID3D11GeometryShader** geometry_shader) {
+	FILE* fp{ nullptr };
+	_ASSERT_EXPR_A(filepath != "-1", "Must Set Filepath");
+	fopen_s(&fp, (filepath + gs_name + "_gs.cso"), "rb");
+	_ASSERT_EXPR_A(fp, "CSO File not found");
+
+	fseek(fp, 0, SEEK_END);
+	long cso_sz{ ftell(fp) };
+	fseek(fp, 0, SEEK_SET);
+
+	std::unique_ptr<unsigned char[]> cso_data{ std::make_unique<unsigned char[]>(cso_sz) };
+	fread(cso_data.get(), cso_sz, 1, fp);
+	fclose(fp);
+
+	HRESULT hr{ S_OK };
+
+	hr = device::get()->CreateGeometryShader(cso_data.get(), cso_sz, nullptr, geometry_shader); VERIFY;
+
+	return hr;
+}
+
 void shader::load_vs(const string& vs_name, D3D11_INPUT_ELEMENT_DESC* input_element_desc, UINT num_elements) {
 	if (vertex_shaders.try_emplace(vs_name).second) {
 		vertex_shader_data& vs_data = vertex_shaders[vs_name];
@@ -70,12 +92,13 @@ void shader::load_vs(const string& vs_name, D3D11_INPUT_ELEMENT_DESC* input_elem
 
 void shader::load_flat(const string& vs_name, D3D11_INPUT_ELEMENT_DESC* input_element_desc, UINT num_elements) {
 	load_vs(vs_name, input_element_desc, num_elements);
-	load_ps("default_flat");
+	load_ps(DEFAULT_FLAT);
+	load_gs(DEFAULT_FLAT);
 }
 
 void shader::load_full(const string& vs_name, D3D11_INPUT_ELEMENT_DESC* input_element_desc, UINT num_elements) {
 	load_vs(vs_name, input_element_desc, num_elements);
-	load_ps("default_full");
+	load_ps(DEFAULT_FULL);
 }
 
 void shader::set_vs(const string& vs_name) {
@@ -93,4 +116,15 @@ void shader::load_ps(const string& ps_name) {
 void shader::set_ps(const string& ps_name) {
 	load_ps(ps_name);
 	device::context()->PSSetShader(pixel_shaders[ps_name].Get(), nullptr, 0);
+}
+
+void shader::load_gs(const string& gs_name) {
+	if (geometry_shaders.try_emplace(gs_name).second) {
+		create_gs_from_cso(gs_name, geometry_shaders[gs_name].GetAddressOf());
+	}
+}
+
+void shader::set_gs(const string& gs_name) {
+	load_gs(gs_name);
+	device::context()->GSSetShader(geometry_shaders[gs_name].Get(), nullptr, 0);
 }

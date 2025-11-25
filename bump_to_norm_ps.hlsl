@@ -1,7 +1,7 @@
 #include "flat_common.hlsli"
 Texture2D bump_map : register(t0);
 SamplerState pixel_sampler : register(s1);
-float4 main(VS_OUT pin) : SV_TARGET
+float4 main(PS_IN pin) : SV_TARGET
 {
     float2 uv = pin.texcoord;
     

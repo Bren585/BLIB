@@ -1,9 +1,6 @@
-#include "flat_vs.hlsli"
-VS_OUT main(float4 pos : POSITION, float2 texcoord : TEXCOORD)
+#include "flat_gs.hlsli"
+
+GS_IN main(GS_IN gin)
 {
-    VS_OUT vout;
-    vout.position   = pos;
-    vout.color      = material_color;
-    vout.texcoord   = texcoord;
-    return vout;
+    return gin;
 }

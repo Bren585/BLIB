@@ -22,8 +22,6 @@ namespace BLIB {
 		static_mesh(const static_mesh& o) : model(o), mesh(o), bounding_box(nullptr) {}
 		virtual ~static_mesh();
 
-		string get_default_vs() const override { return "static_mesh"; }
-
 		void render_bounds(const float4x4& world, const color& material_color);
 
 		inline float3 get_size() const override { return mesh::size(); }

@@ -10,12 +10,17 @@ namespace BLIB {
 		color background = {0, 0, 0};
 
 		view* active_views[MAX_VIEWS]{ nullptr };
+		view* depth_view = nullptr;
 
 		void bind_all() {
 			unbind();
 
 			ID3D11RenderTargetView* rtvs[MAX_VIEWS] = {nullptr};
 			ID3D11DepthStencilView* dsv{nullptr};
+
+			if (depth_view) {
+				dsv = depth_view->depth_stencil_view.Get();
+			}
 
 			for (int i = 0; i < MAX_VIEWS; i++) {
 				view*& rt = active_views[i];
@@ -150,12 +155,19 @@ namespace BLIB {
 		}
 
 		void view::focus(int slot) {
-			assert(slot < MAX_VIEWS);
-			if (slot == -1) {
+			assert(slot < MAX_VIEWS && slot > FOCUS_NONE);
+			if (active_in_slot != FOCUS_NONE) unfocus();
+
+			switch (slot) {
+			case FOCUS_DEPTH:
+				cached_depth = depth_view;
+				depth_view = this;
+				break;
+			case FOCUS_OVERWRITE:
 				for (int i = 0; i < MAX_VIEWS; i++) { cached_views[i] = active_views[i]; active_views[i] = nullptr; }
 				active_views[0] = this;
-			}
-			else {
+				break;
+			default:
 				cached_views[slot] = active_views[slot];
 				active_views[slot] = this;
 			}
@@ -175,18 +187,24 @@ namespace BLIB {
 		}
 
 		void view::unfocus() {
-			assert(active_in_slot != -2);
-			if (active_in_slot == -1) {
+			switch (active_in_slot) {
+			case FOCUS_NONE:
+				break;
+			case FOCUS_DEPTH:
+				depth_view = cached_depth;
+				cached_depth = nullptr;
+				break;
+			case FOCUS_OVERWRITE:
 				for (int i = 0; i < MAX_VIEWS; i++) { 
 					active_views[i] = cached_views[i];
 					cached_views[i] = nullptr;
 				}
-			}
-			else {
+				break;
+			default:
 				active_views[active_in_slot] = cached_views[active_in_slot];
 				cached_views[active_in_slot] = nullptr;
 			}
-			active_in_slot = -2;
+			active_in_slot = FOCUS_NONE;
 			bind_all();
 		}
 

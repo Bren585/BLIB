@@ -71,8 +71,6 @@ namespace BLIB {
 		skinned_mesh(const char* fbx_filename, bool triangulate = false, coordinate_system sys = RH_Y);
 		virtual ~skinned_mesh() = default;
 
-		string get_default_vs() const override { return "skinned_mesh"; }
-
 		bool append_animations(string animation_filename, float sampling_rate);
 		void update_animation(animation::keyframe& keyframe);
 

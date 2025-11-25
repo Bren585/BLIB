@@ -44,7 +44,7 @@ namespace BLIB {
 		float3 up = (fabsf(dot(float3(0, 1, 0), skylight_direction)) < 0.99f ? float3(0, 1, 0) : float3(1, 0, 0));
 		matrix skylight_view = DirectX::XMMatrixLookAtLH((xmvector)(center - (skylight_direction * depth)), (xmvector)center, (xmvector)up);
 		
-		float3 min = FLT_MAX, max = -FLT_MAX;
+		float3 min = float3{ FLT_MAX }, max = float3{ -FLT_MAX };
 		for (int i = 0; i < 8; i++) {
 			float4 raw = mul(float4(corner[i], 1), skylight_view);
 			float3 light_corner = raw.xyz() / raw.w;
@@ -57,7 +57,7 @@ namespace BLIB {
 		float2 per_texel = float2(width, height) / SHADOW_MAP_SIZE;
 
 		float3 shadow_origin = (mul(float4(center, 1), skylight_view).xyz() / float3(per_texel, 1));
-		float2 rounded = (shadow_origin.xy() + 0.5f).floor();
+		float2 rounded = (shadow_origin.xy() + float2{ 0.5f }).floor();
 		float2 offset = (rounded - shadow_origin.xy()) * per_texel;
 
 		skylight_view.r[3] = DirectX::XMVectorAdd(skylight_view.r[3], (xmvector)float4(offset, 0, 0));
@@ -181,6 +181,26 @@ namespace BLIB {
 				}
 			}
 
+			/* Structured Buffer */ {
+				D3D11_BUFFER_DESC desc{};
+				desc.ByteWidth = static_cast<uint>(MAX_LIGHTS * sizeof(packed_light));
+				desc.Usage = D3D11_USAGE_DEFAULT;
+				desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+				desc.CPUAccessFlags = 0;
+				desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+				desc.StructureByteStride = sizeof(packed_light);
+				hr = device::get()->CreateBuffer(&desc, nullptr, structured_buffer.GetAddressOf()); VERIFY;
+			}
+
+			/* SRV */ {
+				D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
+				desc.Format = DXGI_FORMAT_UNKNOWN;
+				desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+				desc.Buffer.FirstElement = 0;
+				desc.Buffer.NumElements = MAX_LIGHTS;
+				hr = device::get()->CreateShaderResourceView(structured_buffer.Get(), &desc, structured_buffer_SRV.GetAddressOf()); VERIFY;
+			}
+
 			shadow_viewport.Width = shadow_viewport.Height = SHADOW_MAP_SIZE;
 			shadow_viewport.MinDepth = 0.0f;
 			shadow_viewport.MaxDepth = 1.0f;
@@ -209,7 +229,7 @@ namespace BLIB {
 			// No Shadow
 			device::context()->ClearDepthStencilView(shadow_stencil[shadow_count++].Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-			render_settings rs{ vertex_shader("shadow"), pixel_shader("shadow") };
+			render_settings rs{ vertex_shader("shadow"), pixel_shader("shadow"), geometry_shader(NULL_SHADER) };
 
 			/* Skylight */ {
 				annotate("skylight shadows");
@@ -255,36 +275,13 @@ namespace BLIB {
 		}
 
 		void update_buffers() {
-			HRESULT hr{ S_OK };
-
-			UINT count = constant_buffer_data.light_count;
-			if (count == 0) count = 1;
-
-			/* Structured Buffer */ {
-				D3D11_BUFFER_DESC desc{};
-				desc.ByteWidth				= static_cast<UINT>(count * sizeof(packed_light));
-				desc.Usage					= D3D11_USAGE_DEFAULT;
-				desc.BindFlags				= D3D11_BIND_SHADER_RESOURCE;
-				desc.CPUAccessFlags			= 0;
-				desc.MiscFlags				= D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-				desc.StructureByteStride	= sizeof(packed_light);
-				hr = device::get()->CreateBuffer(&desc, nullptr, structured_buffer.GetAddressOf()); VERIFY;
-			}
-
-			/* SRV */ {
-				D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
-				desc.Format					= DXGI_FORMAT_UNKNOWN;
-				desc.ViewDimension			= D3D11_SRV_DIMENSION_BUFFER;
-				desc.Buffer.FirstElement	= 0;
-				desc.Buffer.NumElements		= count;
-				hr = device::get()->CreateShaderResourceView(structured_buffer.Get(), &desc, structured_buffer_SRV.GetAddressOf()); VERIFY;
-			}
-
-			device::context()->UpdateSubresource(structured_buffer.Get(), 0, 0, packed_lights.data(), 0, 0);
-			device::context()->PSSetShaderResources(5, 1, structured_buffer_SRV.GetAddressOf());
-
 			device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &constant_buffer_data, 0, 0);
 			device::context()->PSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
+
+			_ASSERT_EXPR(constant_buffer_data.light_count < MAX_LIGHT_COUNT, "Too Many Lights");
+
+			device::context()->UpdateSubresource(structured_buffer.Get(), 0, 0, packed_lights.data(), 0, 0);
+			device::context()->PSSetShaderResources(5, 1, structured_buffer_SRV.GetAddressOf());			
 		}
 
 		void bind_lights(const generic::scene* geometry, const environment_lights* scene_lights, const std::vector<light>* lights) {
@@ -319,8 +316,8 @@ namespace BLIB {
 				hr = device::get()->CreateBuffer(&buffer_desc, nullptr, constant_buffer.GetAddressOf()); VERIFY;
 			}
 
-			pack_lights();
-			update_buffers();
+			//pack_lights();
+			//update_buffers();
 
 			init_shadow_map_array();
 		}

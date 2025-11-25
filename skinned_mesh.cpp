@@ -141,7 +141,7 @@ void skinned_mesh::fetch_meshes(FbxScene* fbx_scene) {
 			for (int position_in_polygon = 0; position_in_polygon < 3; ++position_in_polygon) {
 				const int vertex_index{ polygon_index * 3 + position_in_polygon };
 
-				vertex vertex;
+				mesh::vertex vertex;
 				const int polygon_vertex{ fbx_mesh->GetPolygonVertex(polygon_index, position_in_polygon) };
 				vertex.position.x = static_cast<float>(control_points[polygon_vertex][0]);
 				vertex.position.y = static_cast<float>(control_points[polygon_vertex][1]);
@@ -442,7 +442,7 @@ void skinned_mesh::fetch_animations(FbxScene* fbx_scene, vector<animation>& anim
 					node.global_transform = to_xmfloat4x4(fbx_node->EvaluateGlobalTransform(time));
 					const FbxAMatrix& local_transform{ fbx_node->EvaluateLocalTransform(time) };
 					node.local_transform.set_scl(to_xmfloat3(local_transform.GetS()));
-					node.local_transform.set_ang(break_quaternion(to_xmfloat4(local_transform.GetQ())));
+					node.local_transform.set_qtn(to_xmfloat4(local_transform.GetQ()));
 					node.local_transform.set_pos(to_xmfloat3(local_transform.GetT()));
 				}
 			}
@@ -542,7 +542,7 @@ void skinned_mesh::render(const float4x4& world, const color& material_color) co
 	constants data{ world, material_color };
 	device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
 	device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
-	uint32_t stride{ sizeof(vertex) };
+	uint32_t stride{ sizeof(mesh::vertex) };
 	uint32_t offset{ 0 };
 	//const animation::keyframe* animation_keyframe{ get_keyframe() };
 

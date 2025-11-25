@@ -45,7 +45,7 @@ namespace BLIB::debug::draw {
 		init();
 
 		for (unsigned int i = 0; i < vertex_count; i++) {
-			vertices[i].pos = { vertices[i].pos.xy() / (window::size() * 0.5f) - 1.0f, vertices[i].pos.z};
+			vertices[i].pos = { vertices[i].pos.xy() / (window::size() * 0.5f) - float2{ 1.0f }, vertices[i].pos.z };
 		}
 
 		RENDER_LOCK;

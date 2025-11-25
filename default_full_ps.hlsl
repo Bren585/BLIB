@@ -8,9 +8,10 @@ Texture2D normal_map        : register(t1);
 Texture2D orm_map           : register(t2);
 Texture2D emissive_map      : register(t3);
 
-PS_OUT main(VS_OUT pin)
+PS_OUT main(PS_IN pin)
 {
     PS_OUT pout;
+    
     /* Sampling ******************************************************************************/
     
     float4 albedo = texture_map.Sample(samplers, pin.texcoord) * pin.color;
@@ -23,12 +24,6 @@ PS_OUT main(VS_OUT pin)
     float M = ORM.b; // Metallic
     
     float4 E = emissive_map.Sample(pixel_sampler, pin.texcoord).rgba; // Emissive
-    
-    /* Constants *****************************************************************************/
-    
-    float3 L = normalize(-skylight_direction.xyz); // Light Direction
-    float3 V = normalize(camera_position.xyz - pin.world_position.xyz); // View Direction
-    float3 H = normalize(V + L);
         
     /* Normals  ******************************************************************************/
     
@@ -41,60 +36,23 @@ PS_OUT main(VS_OUT pin)
         N = normalize((n.x * T) + (n.y * B) + (n.z * N));
     }
     
-    /* Precalcs ******************************************************************************/
-    
-    float NdotL = saturate(dot(N, L));
-    float NdotV = saturate(dot(N, V));
-    float NdotH = saturate(dot(N, H));
-    float VdotH = saturate(dot(V, H));
-    
-    /* Fresnel  ******************************************************************************/
-    
-    float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo.rgb, M);
-    float3 F = F0 + ((1 - F0) * pow(1.0 - VdotH, 5.0));
-    
-    /* GGX      ******************************************************************************/
-    
-    float D; // Distribution
-    {
-        float a = R * R;
-        float d = (NdotH * NdotH) * (a - 1.0) + 1.0;
-        D = a / (PI * d * d);
-    }
-    
-    /* Geometry ******************************************************************************/
-    
-    float G; // Geometry
-    {
-        float k = R + 1.0;
-        k = (k * k) / 8.0;
-        float ki = (1 - k);
-        float Gv = NdotV / (NdotV * ki + k);
-        float Gl = NdotL / (NdotL * ki + k);
-        G = Gv * Gl;
-    }
-    
-    /* Specular ******************************************************************************/
-    
-    float3 specular; // Specular
-    {
-        float3 n = D * F * G;
-        float d = 4.0 * NdotV * NdotL + 0.001;
-        specular = n / d;
-    }
-    
     /* Shine    ******************************************************************************/
     
     float3 S = O * albedo.rgb / PI; // Shine
     
-    /* Diffuse  ******************************************************************************/
+    /* Skylight ******************************************************************************/
     
-    float3 diffuse = (1.0 - F) * (1.0 - M); // Diffuse
+    float3 sky_lighting;
+    {
+        float3 V = normalize(camera_position.xyz - pin.world_position.xyz);
+        float3 L = normalize(-skylight_direction.xyz);
+        float3 H = normalize(V + L);
+        float3 sky_radiance = skylight_color.rgb * skylight_intensity;
+        
+        sky_lighting = sky_radiance * calculate_lighting(pin.world_position.xyz, albedo.rgb, N, L, V, H, R, M, S);
+    }
     
-    /* Lighting ******************************************************************************/
-    
-    float3 sky_radiance = skylight_color.rgb * skylight_intensity;
-    float3 sky_lighting = (diffuse * S + specular) * sky_radiance * NdotL;
+    /* Ambient  ******************************************************************************/
     
     float3 ambient_radiance = ambient_color.rgb * ambient_intensity;
     float3 ambient_lighting = ambient_radiance * S;

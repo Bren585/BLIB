@@ -52,28 +52,6 @@ namespace BLIB {
 
 		/* Window Setup */ {
 			window::create(instance, cmd_show, window_procedure, name, &swap_chain);
-
-			//window_name = name;
-			//
-			//WNDCLASSEXW wcex{};
-			//wcex.cbSize = sizeof(WNDCLASSEX);
-			//wcex.style = CS_HREDRAW | CS_VREDRAW;
-			//wcex.lpfnWndProc = window_procedure;
-			//wcex.cbClsExtra = 0;
-			//wcex.cbWndExtra = 0;
-			//wcex.hInstance = instance;
-			//wcex.hIcon = 0;
-			//wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-			//wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-			//wcex.lpszMenuName = NULL;
-			//wcex.lpszClassName = window_name;
-			//wcex.hIconSm = 0;
-			//RegisterClassExW(&wcex);
-			//
-			//RECT rc{ 0, 0, SCREEN_W, SCREEN_H };
-			//AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
-			//hwnd = CreateWindowExW(0, window_name, L"", WS_OVERLAPPEDWINDOW ^ WS_MAXIMIZEBOX ^ WS_THICKFRAME | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, instance, NULL);
-			//ShowWindow(hwnd, cmd_show);
 		}
 
 		/* Create Com Objects */ {
@@ -106,43 +84,6 @@ namespace BLIB {
 
 			device::init_annotation();
 
-			//device::get()->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof("Device") - 1, "Device");
-			//swap_chain->SetPrivateData(WKPDID_D3DDebugObjectName, sizeof("SwapChain") - 1, "SwapChain");
-			//
-			//ID3D11Texture2D* back_buffer{};														// render target view
-			//{
-			//	hr = swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<LPVOID*>(&back_buffer)); VERIFY;
-			//	hr = device::get()->CreateRenderTargetView(back_buffer, NULL, render_target_view.GetAddressOf()); VERIFY;
-			//}
-			//back_buffer->Release();
-			//
-			//ID3D11Texture2D* depth_stencil_buffer{};
-			//D3D11_TEXTURE2D_DESC texture2d_desc{};												// depth_stencil_buffer
-			//{
-			//	texture2d_desc.Width = SCREEN_W;
-			//	texture2d_desc.Height = SCREEN_H;
-			//	texture2d_desc.MipLevels = 1;
-			//	texture2d_desc.ArraySize = 1;
-			//	texture2d_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-			//	texture2d_desc.SampleDesc.Count = 1;
-			//	texture2d_desc.SampleDesc.Quality = 0;
-			//	texture2d_desc.Usage = D3D11_USAGE_DEFAULT;
-			//	texture2d_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-			//	texture2d_desc.CPUAccessFlags = 0;
-			//	texture2d_desc.MiscFlags = 0;
-			//	hr = device::get()->CreateTexture2D(&texture2d_desc, NULL, &depth_stencil_buffer); VERIFY;
-			//}
-			//
-			//D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc{};							// depth stencil view
-			//{
-			//	depth_stencil_view_desc.Format = texture2d_desc.Format;
-			//	depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-			//	depth_stencil_view_desc.Texture2D.MipSlice = 0;
-			//	hr = device::get()->CreateDepthStencilView(depth_stencil_buffer, &depth_stencil_view_desc, depth_stencil_view.GetAddressOf()); VERIFY;
-			//}
-			//depth_stencil_buffer->Release();
-			//
-
 			D3D11_VIEWPORT viewport{};															// default viewport
 			{
 				viewport.TopLeftX = 0;
@@ -154,187 +95,6 @@ namespace BLIB {
 				device::context()->RSSetViewports(1, &viewport);
 			}
 
-			//D3D11_SAMPLER_DESC sampler_desc;													// sampler state
-			//{
-			//	sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-			//	sampler_desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-			//	sampler_desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-			//	sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-			//	sampler_desc.MipLODBias = 0;
-			//	sampler_desc.MaxAnisotropy = 16;
-			//	sampler_desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-			//	sampler_desc.BorderColor[0] = 0;
-			//	sampler_desc.BorderColor[1] = 0;
-			//	sampler_desc.BorderColor[2] = 0;
-			//	sampler_desc.BorderColor[3] = 0;
-			//	sampler_desc.MinLOD = 0;
-			//	sampler_desc.MaxLOD = D3D11_FLOAT32_MAX;
-			//	hr = device::get()->CreateSamplerState(&sampler_desc, sampler_states[0].GetAddressOf()); VERIFY;
-			//
-			//	sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-			//	hr = device::get()->CreateSamplerState(&sampler_desc, sampler_states[1].GetAddressOf()); VERIFY;
-			//
-			//	sampler_desc.Filter = D3D11_FILTER_ANISOTROPIC;
-			//	hr = device::get()->CreateSamplerState(&sampler_desc, sampler_states[2].GetAddressOf()); VERIFY;
-			//}
-			//
-			//D3D11_DEPTH_STENCIL_DESC depth_stencil_desc{};										// depth stencil
-			//{
-			//	depth_stencil_desc.DepthEnable = TRUE;
-			//	depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-			//	depth_stencil_desc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-			//	hr = device::get()->CreateDepthStencilState(&depth_stencil_desc, depth_stencil_states[0].GetAddressOf());
-			//	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//
-			//	depth_stencil_desc.DepthEnable = FALSE;
-			//	depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-			//	hr = device::get()->CreateDepthStencilState(&depth_stencil_desc, depth_stencil_states[1].GetAddressOf());
-			//	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//
-			//	depth_stencil_desc.DepthEnable = TRUE;
-			//	depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-			//	hr = device::get()->CreateDepthStencilState(&depth_stencil_desc, depth_stencil_states[2].GetAddressOf());
-			//	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//
-			//	depth_stencil_desc.DepthEnable = FALSE;
-			//	depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-			//	hr = device::get()->CreateDepthStencilState(&depth_stencil_desc, depth_stencil_states[3].GetAddressOf());
-			//	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//}
-			//
-			//D3D11_BLEND_DESC blend_desc{};														// blend state
-			//{
-			//	// No Blending
-			//	{
-			//		blend_desc.AlphaToCoverageEnable = FALSE;
-			//		blend_desc.IndependentBlendEnable = FALSE;
-			//		blend_desc.RenderTarget[0].BlendEnable = TRUE;
-			//		blend_desc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-			//		blend_desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-			//		blend_desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-			//		blend_desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-			//		blend_desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-			//		blend_desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-			//		blend_desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-			//		hr = device::get()->CreateBlendState(&blend_desc, blend_states[BLEND_NONE].GetAddressOf());
-			//		_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//	} 
-			//
-			//	// Alpha
-			//	{
-			//		blend_desc.IndependentBlendEnable = TRUE;
-			//		blend_desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-			//		hr = device::get()->CreateBlendState(&blend_desc, blend_states[BLEND_ALPHA].GetAddressOf());
-			//		_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//	}
-			//
-			//	// Add 
-			//	{
-			//		blend_desc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
-			//		blend_desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ZERO;
-			//		blend_desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
-			//		hr = device::get()->CreateBlendState(&blend_desc, blend_states[BLEND_ADD].GetAddressOf());
-			//		_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//	}
-			//
-			//	// Subtract
-			//	{
-			//		blend_desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_REV_SUBTRACT;
-			//		hr = device::get()->CreateBlendState(&blend_desc, blend_states[BLEND_SUBTRACT].GetAddressOf());
-			//		_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//	}
-			//
-			//	// Replace 
-			//	{
-			//		blend_desc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-			//		blend_desc.RenderTarget[0].DestBlend = D3D11_BLEND_ZERO;
-			//		blend_desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-			//		blend_desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-			//		blend_desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-			//		hr = device::get()->CreateBlendState(&blend_desc, blend_states[BLEND_REPLACE].GetAddressOf());
-			//		_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//	}
-			//
-			//	// Multiply
-			//	{
-			//		blend_desc.RenderTarget[0].SrcBlend = D3D11_BLEND_DEST_COLOR;
-			//		blend_desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_DEST_ALPHA;
-			//		hr = device::get()->CreateBlendState(&blend_desc, blend_states[BLEND_MULTIPLY].GetAddressOf());
-			//		_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//	}
-			//
-			//	// Lighten
-			//	{
-			//		blend_desc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
-			//		blend_desc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
-			//		blend_desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_MAX;
-			//		blend_desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-			//		blend_desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
-			//		blend_desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MAX;
-			//		hr = device::get()->CreateBlendState(&blend_desc, blend_states[BLEND_LIGHTEN].GetAddressOf());
-			//		_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//	}
-			//
-			//	// Darken
-			//	{
-			//		blend_desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_MIN;
-			//		blend_desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MIN;
-			//		hr = device::get()->CreateBlendState(&blend_desc, blend_states[BLEND_DARKEN].GetAddressOf());
-			//		_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//	}
-			//
-			//	// Screen
-			//	{
-			//		blend_desc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-			//		blend_desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-			//		blend_desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-			//		blend_desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-			//		blend_desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-			//		blend_desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-			//		hr = device::get()->CreateBlendState(&blend_desc, blend_states[BLEND_SCREEN].GetAddressOf());
-			//		_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//	}
-			//}
-			//
-			//D3D11_BUFFER_DESC buffer_desc{};													// constant buffer
-			//{
-			//	buffer_desc.ByteWidth = sizeof(scene_constants);
-			//	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-			//	buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-			//	buffer_desc.CPUAccessFlags = 0;
-			//	buffer_desc.MiscFlags = 0;
-			//	buffer_desc.StructureByteStride = 0;
-			//	hr = device::get()->CreateBuffer(&buffer_desc, nullptr, constant_buffers[0].GetAddressOf());
-			//	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//}
-			//
-			//D3D11_RASTERIZER_DESC rasterizer_desc{};											// rasterizer desc
-			//{
-			//	rasterizer_desc.FillMode = D3D11_FILL_SOLID;
-			//	rasterizer_desc.CullMode = D3D11_CULL_BACK;
-			//	rasterizer_desc.FrontCounterClockwise = false;
-			//	rasterizer_desc.DepthBias = 0;
-			//	rasterizer_desc.DepthBiasClamp = 0;
-			//	rasterizer_desc.SlopeScaledDepthBias = 0;
-			//	rasterizer_desc.DepthClipEnable = true;
-			//	rasterizer_desc.ScissorEnable = false;
-			//	rasterizer_desc.MultisampleEnable = false;
-			//	rasterizer_desc.AntialiasedLineEnable = false;
-			//	hr = device::get()->CreateRasterizerState(&rasterizer_desc, rasterizer_states[0].GetAddressOf());
-			//	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//
-			//	rasterizer_desc.FillMode = D3D11_FILL_WIREFRAME;
-			//	rasterizer_desc.CullMode = D3D11_CULL_BACK;
-			//	rasterizer_desc.AntialiasedLineEnable = true;
-			//	hr = device::get()->CreateRasterizerState(&rasterizer_desc, rasterizer_states[1].GetAddressOf());
-			//	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//
-			//	rasterizer_desc.FillMode = D3D11_FILL_WIREFRAME;
-			//	rasterizer_desc.CullMode = D3D11_CULL_NONE;
-			//	rasterizer_desc.AntialiasedLineEnable = true;
-			//	hr = device::get()->CreateRasterizerState(&rasterizer_desc, rasterizer_states[2].GetAddressOf());
-			//	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
-			//}
 		}
 
 		/* INIT */ {
@@ -428,6 +188,7 @@ namespace BLIB {
 			//	}
 			//}
 			//ImGui::End();
+			shader::set_gs(NULL_SHADER);
 			ImGui::Render();
 			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 		}
@@ -435,6 +196,11 @@ namespace BLIB {
 
 		UINT sync_interval{ 0 };
 		HRESULT hr = swap_chain->Present(sync_interval, 0); VERIFY;
+
+		ID3D11Buffer* empty_buffer[8] = { nullptr };
+		device::context()->PSSetConstantBuffers(0, 8, empty_buffer);
+		device::context()->VSSetConstantBuffers(0, 8, empty_buffer);
+		device::context()->GSSetConstantBuffers(0, 8, empty_buffer);
 	}
 
 	int uninit()
@@ -462,6 +228,11 @@ namespace BLIB {
 		audio::uninit();
 
 		active = false;
+
+		device::context()->ClearState();
+		device::context()->Flush();
+		swap_chain.Reset();
+		device::reset();
 		
 		return 0;
 	}
@@ -474,11 +245,13 @@ namespace BLIB {
 	{
 		if (++frames, (tictoc.time_stamp() - seconds) >= 1.0f)
 		{
+#ifdef _DEBUG
 			float fps = static_cast<float>(frames);
 			std::wostringstream outs;
 			outs.precision(6);
-			outs << window::name << L" : FPS : " << fps << L" / " << L"Frame Time : " << 1000.0f / fps << L" (ms)";
+			outs << window::name() << L" : FPS : " << fps << L" / " << L"Frame Time : " << 1000.0f / fps << L" (ms)";
 			window::rename(outs.str().c_str());
+#endif
 
 			frames = 0;
 			seconds += 1.0f;
@@ -496,7 +269,6 @@ namespace BLIB {
 		{
 			PAINTSTRUCT ps{};
 			BeginPaint(hwnd, &ps);
-
 			EndPaint(hwnd, &ps);
 		}
 		break;

@@ -1,7 +1,7 @@
 #include "math_constants.hlsli"
 #include "camera.hlsli"
 
-struct VS_OUT
+struct PS_IN
 {
     float4 screen_position  : SV_POSITION;
     //float4 view_position    : VIEW;

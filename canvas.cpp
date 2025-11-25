@@ -9,14 +9,14 @@ canvas::canvas(float2 size) : view(size) {
 	set_sprite(new sprite(sprite::canvas_flags));
 	view.copy_SRV_to(peek_sprite()->get_release_SRV());
 	peek_sprite()->resize(size);
-	object::size = size;
+	object::resize(size);
 }
 
 void canvas::resize(float2 size) {
 	view.resize(size);
 	view.copy_SRV_to(peek_sprite()->get_release_SRV());
 	peek_sprite()->resize(size);
-	object::size = size;
+	object::resize(size);
 }
 
 void canvas::clear() const { RENDER_LOCK; view.clear(background); }

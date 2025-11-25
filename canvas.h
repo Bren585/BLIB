@@ -21,8 +21,8 @@ namespace BLIB {
 
 		float type(string s, float2 pos, float2 size, font_name font = FONT_DEFAULT, color color = { 1.0f, 1.0f, 1.0f, 1.0f }, float2 align = { -1, -1 }) const;
 
-		void focus	()	const { view.focus();	}
-		void unfocus()	const { view.unfocus();	}
+		void focus	(int slot = FOCUS_OVERWRITE)	const { view.focus(slot);	}
+		void unfocus()								const { view.unfocus();		}
 
 		operator render_target::view*				()			{ return &view; }
 		render_target::view*			get_view	()			{ return &view; }

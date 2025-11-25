@@ -14,8 +14,8 @@ geometric_primitive::geometric_primitive() {
 	create_shaders("default_full");
 	create_materials();
 
-	minimum = -0.5f;
-	maximum = 0.5f;
+	minimum = float3{ -0.5f };
+	maximum = float3{  0.5f };
 }
 
 void geometric_primitive::render(const float4x4& world, const color& material_color) const {
@@ -48,10 +48,10 @@ void geometric_primitive::create_materials() {
 
 quad::quad() {
 	vertices = {
-		{ { -0.5f,  0.5f, 0.0f }, { 0, 0, -1 }, { 0, 0 }, { 1, 0, 0, -1 } },
-		{ {  0.5f,  0.5f, 0.0f }, { 0, 0, -1 }, { 1, 0 }, { 1, 0, 0, -1 } },
-		{ { -0.5f, -0.5f, 0.0f }, { 0, 0, -1 }, { 0, 1 }, { 1, 0, 0, -1 } },
-		{ {  0.5f, -0.5f, 0.0f }, { 0, 0, -1 }, { 1, 1 }, { 1, 0, 0, -1 } }
+		{ { -0.5f,  0.5f, 0.0f }, { 0, 0, -1 }, { 0, 0 }, { 1, 0, 0, 1 } },
+		{ {  0.5f,  0.5f, 0.0f }, { 0, 0, -1 }, { 1, 0 }, { 1, 0, 0, 1 } },
+		{ { -0.5f, -0.5f, 0.0f }, { 0, 0, -1 }, { 0, 1 }, { 1, 0, 0, 1 } },
+		{ {  0.5f, -0.5f, 0.0f }, { 0, 0, -1 }, { 1, 1 }, { 1, 0, 0, 1 } }
 	};
 
 	indices = { 0, 1, 2, 2, 1, 3 };

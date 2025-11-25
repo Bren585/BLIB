@@ -5,7 +5,6 @@
 #include "model_animation.h"
 #include "render_settings.h"
 
-
 namespace BLIB {
 
 	// Definitions
@@ -43,7 +42,7 @@ namespace BLIB {
 		
 	protected:
 
-		static inline std::wstring filepath = L"";
+		static inline string filepath = L"";
 
 		Microsoft::WRL::ComPtr<ID3D11Buffer>			constant_buffer;
 
@@ -53,7 +52,7 @@ namespace BLIB {
 		coordinate_system								coord_sys;
 		std::vector<D3D11_INPUT_ELEMENT_DESC>			input_element_desc;
 
-		void create_shaders(std::string vs_cso);
+		void create_shaders(string vs_cso);
 
 		inline virtual model* clone_impl() const = 0;
 
@@ -61,10 +60,10 @@ namespace BLIB {
 		auto clone() const { return std::unique_ptr<model>(clone_impl()); }
 		virtual ~model() = default;
 
-		static inline void			set_filepath(std::wstring path) { filepath = path; }
-		static inline std::wstring	get_filepath()					{ return filepath; }
+		static inline void		set_filepath(string path)	{ filepath = path; }
+		static inline string	get_filepath()				{ return filepath; }
 
-		virtual string get_default_vs() const = 0;
+		virtual render_settings default_rs() const { return vertex_shader("default_full"); };
 
 		virtual void render(const float4x4& world, const color& material_color) const = 0;
 		
@@ -100,12 +99,13 @@ namespace BLIB {
 	// Primitives
 
 	void set_primitive_detail(int level = 12);
-	model* create_cube(float3 min = -0.5f, float3 max = 0.5f);
+	model* create_cube(float3 min = float3{ -0.5f }, float3 max = float3{ 0.5f });
 	model* create_sphere();
 	model* create_cylinder();
 	model* create_capsule(float height = 0.5f, float radius = 0.5f);
 	model* create_quad();
 	model* create_rect_pyramid();
+	model* create_billboard(float2 size = float2{ 1 });
 
 	void load_texture(model* dest, const string filename, texture_type slot = texture_map, float3* out_aspect = nullptr);
 

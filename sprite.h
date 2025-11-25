@@ -3,19 +3,25 @@
 #include <wrl.h>
 #include "string.h"
 #include "math.h"
-#include "shader.h"
+#include "render_settings.h"
 
 #define SPRITE_VS DEFAULT_FLAT
+#define SPRITE_GS DEFAULT_FLAT
 
 namespace BLIB {
-
-	void make_quad_buffer(ID3D11Buffer** out);
 
 	class sprite {
 	public:
 		struct vertex {
-			float3 position;
-			float2 texcoord;
+			float2	position;
+			float2	size;
+			float2	pivot;
+			float	rotation;
+			float2	viewport;
+			uint	y_invert;
+			float2	tile_size;
+			float2	tile_index;
+			float2  texture_size;
 		};
 
 		struct constants {
@@ -49,13 +55,13 @@ namespace BLIB {
 		void create_constant_buffer();
 
 	protected:
-		string												vs_cso;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				vertex_buffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				constant_buffer;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	shader_resource_view	= nullptr;
 		D3D11_TEXTURE2D_DESC								texture2d_desc{};
 
-		bool create_vertices(vertex* vertex_out, float2 pos, float2 size, float2 tpos, float2 tsize, float angle, float2 center);
+		void update_vertex_buffer(float2 pos, float2 scale, float2 pivot, float rotation, float2 tile_size, float2 tile_index);
+		void update_constant_buffer(color color);
 
 	public:
 		sprite(flags flags, const string& filename = "");
@@ -74,7 +80,10 @@ namespace BLIB {
 		ID3D11ShaderResourceView**								get_SRV			()			{ return shader_resource_view.Get() ? shader_resource_view.GetAddressOf()			: nullptr; }
 		const Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& peek_SRV		() const	{ return shader_resource_view; }
 
-		static vertex_shader get_default_vs() { return vertex_shader{ SPRITE_VS }; }
+		static render_settings default_rs() { return { vertex_shader{ SPRITE_VS }, geometry_shader{ SPRITE_GS } }; }
+
+		//static vertex_shader		default_vs() { return vertex_shader		{ SPRITE_VS	}; }
+		//static geometry_shader	default_gs() { return geometry_shader	{ SPRITE_GS }; }
 
 		static void		set_y_invert(bool invert)	{ y_invert = invert; }
 		static void		set_viewport(float2 size)	{ viewport = size; }
@@ -84,11 +93,16 @@ namespace BLIB {
 		static float2	get_viewport()				{ return viewport; }
 		static string	get_filepath()				{ return filepath; }
 
-		float2 get_size	()				const		{ return { (float)texture2d_desc.Width, (float)texture2d_desc.Height }; }
-		void   resize	(float2 size)				{ texture2d_desc.Width = (UINT)size.x; texture2d_desc.Height = (UINT)size.y; }
+		float2			get_size	() const		{ return { (float)texture2d_desc.Width, (float)texture2d_desc.Height }; }
+		void			resize		(float2 size)	{ texture2d_desc.Width = (uint)size.x; texture2d_desc.Height = (uint)size.y; }
 
-		virtual void	render(float2 pos,			float2 size,		float2 tpos = 0,			float2 tsize = 0,			float angle = 0, float2 center = C_CC, color color = {1, 1, 1});
-		void			render(float dx, float dy,	float dw, float dh, float sx = 0, float sy = 0, float sw = 0, float sh = 0, float angle = 0, float2 center = C_CC, float r = 1, float g = 1, float b = 1, float a = 1) { render({dx, dy}, {dw, dh}, {sx, sy}, {sw, sh}, angle, center, {r, g, b, a}); }
+		virtual void render(float2 pos, float2 scale, float2 pivot, float rotation, color color, float2 tile_index, float2 tile_size);
 	};
+
+	void make_point_buffer(ID3D11Buffer** out);
+
+	void update_point_buffer(ID3D11Buffer* point_buffer, float2 pos = sprite::get_viewport() / 2.0f, float2 scale = sprite::get_viewport(), float2 pivot = C_CC, float rotation = 0, float2 tile_size = float2{ 1 }, float2 tile_index = float2{ 0 }, float2 texture_size = float2{ 1 });
+
+	void draw_points(ID3D11Buffer* const* vertex_buffer_adr, uint count = 1);
 
 }

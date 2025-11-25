@@ -3,13 +3,14 @@
 #include "shader.h"
 #include "skinned_mesh.h"
 #include "geometric_primitive.h"
+#include "billboard.h"
 #include "sprite.h"
 
 namespace BLIB {
 
 	// Model 
 
-	void model::create_shaders(std::string vs_cso) {
+	void model::create_shaders(string vs_cso) {
 		HRESULT hr{ S_OK };
 
 		_ASSERT_EXPR_A(input_element_desc.size() > 0, "Shader Inputs Not Set");
@@ -75,11 +76,11 @@ namespace BLIB {
 					bone_transforms.push_back(DirectX::XMLoadFloat4x4(&matrix_id));
 				}
 
-				std::vector<vertex> vertices;
+				std::vector<mesh::vertex> vertices;
 				const size_t vertex_count = mesh.vertices.size();
 				vertices.resize(vertex_count);
 				for (size_t i = 0; i < vertex_count; i++) {
-					const vertex& v = mesh.vertices.at(i);
+					const mesh::vertex& v = mesh.vertices.at(i);
 					float3 weighted_position;
 					float3 weighted_normal;
 					float4 weighted_tangent;
@@ -91,11 +92,11 @@ namespace BLIB {
 						weighted_normal		+= weight * mul_normal(v.normal,	bone_transform);
 						weighted_tangent	+= weight * mul_normal(v.tangent,	bone_transform);
 					}
-					vertex& out = vertices.at(i);
-					out.position	= mul(weighted_position, world);
-					out.normal		= mul_normal(weighted_normal, world_normal);
-					out.tangent		= mul_normal(weighted_tangent, world_normal);
-					out.texcoord	= v.texcoord;
+					mesh::vertex& out	= vertices.at(i);
+					out.position		= mul(weighted_position, world);
+					out.normal			= mul_normal(weighted_normal, world_normal);
+					out.tangent			= mul_normal(weighted_tangent, world_normal);
+					out.texcoord		= v.texcoord;
 				}
 
 				mesh.update_buffers(vertices);
@@ -130,7 +131,8 @@ namespace BLIB {
 	model* create_cylinder		()								{ return new cylinder		(primitive_detail);					}
 	model* create_capsule		(float height, float radius)	{ return new capsule		(height, radius, primitive_detail); }
 	model* create_quad			()								{ return new quad;												}
-	model* create_rect_pyramid	()								{ return new rect_pyramid;										}		
+	model* create_rect_pyramid	()								{ return new rect_pyramid;										}	
+	model* create_billboard		(float2 size)					{ return new billboard(size);									}
 
 	void load_texture(model* dest, const string filename, texture_type slot, float3* out_aspect) {
 		geometric_primitive* primitive = dynamic_cast<geometric_primitive*>(dest);

@@ -28,6 +28,7 @@ namespace BLIB {
 		device::context()->UpdateSubresource(buffer.Get(), 0, 0, &data, 0, 0);
 		device::context()->VSSetConstantBuffers(1, 1, buffer.GetAddressOf());
 		device::context()->PSSetConstantBuffers(1, 1, buffer.GetAddressOf());
+		device::context()->GSSetConstantBuffers(1, 1, buffer.GetAddressOf());
 	}
 
 	void perspective_camera::_update() const {

@@ -23,19 +23,17 @@ namespace BLIB {
 		canvas capture(size);
 		capture.focus(); // set RTV
 
-		Microsoft::WRL::ComPtr<ID3D11Buffer> quad_buffer;
-		make_quad_buffer(quad_buffer.GetAddressOf());
+		Microsoft::WRL::ComPtr<ID3D11Buffer> point_buffer;
+		make_point_buffer(point_buffer.GetAddressOf());
 	
 		sprite::load_shader();
-		render_settings rs{ pixel_shader{"orm_compression"}, vertex_shader(DEFAULT_FLAT) };
+		render_settings rs{ pixel_shader{"orm_compression"} };
+		rs &= sprite::default_rs();
 		rs.set();
 
-		uint32_t stride{ sizeof(sprite::vertex) };
-		uint32_t offset{ 0 };
-		device::context()->IASetVertexBuffers(0, 1, quad_buffer.GetAddressOf(), &stride, &offset);
-		device::context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		update_point_buffer(point_buffer.Get(), size / 2, size);
 
-		device::context()->Draw(4, 0);
+		draw_points(point_buffer.GetAddressOf());
 
 		data.reset(capture.peek_sprite()->clone());
 	}
@@ -53,7 +51,7 @@ namespace BLIB {
 
 	void construct_normal_from_bump(std::unique_ptr<sprite>& normal_map, string filename) {
 		flat::object bump_map(filename);
-		canvas capture(bump_map.size);
+		canvas capture(bump_map.get_size());
 		capture.draw(&bump_map, render_settings{ pixel_shader{"bump_to_norm"} });
 		normal_map.reset(capture.peek_sprite()->clone());
 	}

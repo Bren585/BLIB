@@ -11,6 +11,10 @@
 #define VIEW_FORMAT_DEFAULT DXGI_FORMAT_R8G8B8A8_UNORM
 #define VIEW_FORMAT_FLOAT DXGI_FORMAT_R16G16B16A16_FLOAT
 
+#define FOCUS_OVERWRITE -1
+#define FOCUS_DEPTH		-2
+#define FOCUS_NONE		-3
+
 namespace BLIB {
 	
 	namespace render_target {
@@ -25,7 +29,8 @@ namespace BLIB {
 			float2												size;
 
 			view*												cached_views[MAX_VIEWS]	{ nullptr };
-			int													active_in_slot			{ -2 };
+			view*												cached_depth			{ nullptr };
+			int													active_in_slot			{ FOCUS_NONE };
 
 			void create_back_buffer(D3D11_TEXTURE2D_DESC desc);
 			void get_back_buffer(IDXGISwapChain* swap_chain);
@@ -37,7 +42,7 @@ namespace BLIB {
 
 			void clear(color bkg);
 			void resize(float2 size, IDXGISwapChain* swap_chain = nullptr);
-			void focus(int slot = -1);
+			void focus(int slot = FOCUS_OVERWRITE);
 			void unfocus();
 			void release();
 			

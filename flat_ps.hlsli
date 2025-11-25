@@ -2,5 +2,5 @@
 
 cbuffer CONSTANT_BUFFER : register(b0)
 {
-    float4 material_color;
+    float4  material_color;
 }

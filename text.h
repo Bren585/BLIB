@@ -11,6 +11,7 @@ enum font_name {
 	FONT_2,
 	FONT_3,
 	BLOCK,
+	DEBUG_FONT,
 
 	COUNT_FONT,
 	FONT_DEFAULT = FONT_0,
@@ -25,9 +26,11 @@ namespace BLIB {
 		void	set_filepath(string path);
 
 		class font : public sprite_batch {
+		private:
+			void render_each(float2 pos, float2 scale, float2 pivot, float rotation, float2 tile_index, float2 tile_size) override;
 		public:
+			string buffer;
 			font(font_name f) : sprite_batch(get_filename_from_font(f), TEXT_CHAR_LIMIT, font_flags) {}
-			void write(string s, float2 pos, float2 size, color color = { 1, 1, 1 });
 		};
 
 	}

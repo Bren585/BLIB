@@ -17,19 +17,18 @@ namespace BLIB {
 
 	namespace generic {
 		class scene : public status, public canvas {
-			friend scene_id manager::add(generic::scene*);
 			friend void lighting::make_shadows(const generic::scene*, const std::vector<light>*);
 		private:
-			scene_id			id				= 0;
 			camera*				active_camera	= nullptr;
 			std::vector<light>	lights;
 			environment_lights	scene_lights;
 
 			virtual void _on_resize() {} // engine use only
+			void on_load() override { sleep(); }
 
 		protected:
-			virtual void draw(render_settings) const	{}
-			virtual void on_resize()					{}
+			virtual void draw(render_settings = {}) const	{}
+			virtual void on_resize()						{}
 
 		public:
 			scene(float2 size = window::size()) : canvas(size) {
@@ -37,7 +36,6 @@ namespace BLIB {
 				set_background(DEFAULT_BACKGROUND);
 			}
 
-			scene_id get_id() const { return id; }
 			void resize(float2 size) { canvas::resize(size); _on_resize(); on_resize(); }
 
 			void						set_post_effects	(render_settings rs)	{ object::set_settings(rs); }
@@ -62,7 +60,7 @@ namespace BLIB {
 			//virtual void kill() {}
 			//virtual void wake() {}
 
-			virtual void _render() const = 0;
+			virtual void _render(const camera* cam) const = 0;
 			virtual void render(const camera* cam = nullptr, const environment_lights* scene_lights = nullptr, const std::vector<light>* lights = nullptr) const;
 		};
 	}
@@ -71,7 +69,7 @@ namespace BLIB {
 		class scene : public generic::scene {
 			friend class camera_scene;
 		private:
-			void _render() const override;
+			void _render(const camera* cam) const override;
 		public:
 			scene(float2 size = window::size()) : generic::scene(size) {}
 			virtual ~scene() {}
@@ -83,16 +81,16 @@ namespace BLIB {
 		private:
 			static constexpr UINT geometry_layer_count = 5;
 
-			Microsoft::WRL::ComPtr<ID3D11Buffer> quad_buffer;
+			Microsoft::WRL::ComPtr<ID3D11Buffer> point_buffer;
 			std::unique_ptr<render_target::view> geometry_buffer[MAX_VIEWS];
-			void _on_resize() override { for (int i = 0; i < geometry_layer_count; i++) geometry_buffer[i]->resize(size); }
+			void _on_resize() override { for (int i = 0; i < geometry_layer_count; i++) geometry_buffer[i]->resize(get_size()); }
 
-			void _render() const override;
+			void _render(const camera* cam) const override;
 
 		protected:
-			void opaque_pass		() const;
-			void lighting_pass		() const;
-			void transparent_pass	() const;
+			void opaque_pass		(const camera* cam) const;
+			void lighting_pass		()					const;
+			void transparent_pass	(const camera* cam) const;
 
 			virtual void draw_transparent() const {}
 
@@ -106,7 +104,7 @@ namespace BLIB {
 				geometry_buffer[5] = nullptr;
 				geometry_buffer[6] = nullptr;
 				geometry_buffer[7] = nullptr;
-				make_quad_buffer(quad_buffer.GetAddressOf());
+				make_point_buffer(point_buffer.GetAddressOf());
 			}
 			virtual ~scene() {}
 
@@ -126,7 +124,7 @@ namespace BLIB {
 		void set_scene(generic::scene* scene) { target_scene = scene; }
 
 		void draw	(render_settings)				const override;
-		void render	(const camera* cam = nullptr, const environment_lights* scene_lights = nullptr, const std::vector<light>*lights = nullptr)	const override;
+		void render	(const camera* cam = nullptr,	const environment_lights* scene_lights = nullptr, const std::vector<light>*lights = nullptr)	const override;
 
 	};
 }

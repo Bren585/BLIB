@@ -263,7 +263,7 @@ namespace BLIB::collision {
 
 BLIB::flat::collision BLIB::collision::check(const flat::collider* a, const flat::collider* b, bool any) {
 	if (!a || !b) return false;
-	BLIB::flat::collision result(NO_HIT, 0);
+	BLIB::flat::collision result(NO_HIT, {0, 0});
 	BLIB::flat::collision temp_result(false);
 
 	temp_result = a->collide(b);
@@ -307,7 +307,7 @@ namespace BLIB::flat {
 	collision SAT_rect_rect(const float2& a_pos, const float2& a_size, const float2 a_axes[2], const float2& b_pos, const float2& b_size, const float2 b_axes[2]) {
 		float2 axes[4]{ a_axes[0], a_axes[1], b_axes[0], b_axes[1] };
 
-		collision min_collision(FLT_MAX, 0);
+		collision min_collision(NO_HIT, {0, 0});
 
 		for (int i = 0; i < 4; i++) {
 			float2 a_p = project_rect(a_pos, a_size, a_axes, axes[i]);
@@ -486,11 +486,11 @@ namespace BLIB::flat {
 
 	float ray_pick_edge(float2 ray_origin, float2 ray_direction, float2 edge_start, float2 edge_end, float2* out_position, float2* out_normal) {
 		float2 edge_direction = edge_end - edge_start;
-		float denom = tangent_cross(edge_direction, ray_direction);
+		float denom = edge_direction % ray_direction;
 		if (fabsf(denom) > EPS) {
 			float2 delta = edge_start - ray_origin;
-			float t = tangent_cross(edge_direction, delta) / denom;
-			float u = tangent_cross(ray_direction, delta) / denom;
+			float t = (edge_direction % delta) / denom;
+			float u = (ray_direction  % delta) / denom;
 
 			if (t > EPS && u >= 0 && u <= 1) {
 				if (out_position)	{ *out_position = ray_origin + ray_direction * t; }
@@ -633,7 +633,7 @@ bool pre_check(const BLIB::full::aabb_collider& a, const BLIB::full::aabb_collid
 
 BLIB::full::collision BLIB::collision::check(const full::collider* a, const full::collider* b, bool any) {
 	if (!a || !b) { return false; }
-	BLIB::full::collision result(NO_HIT, 0);
+	BLIB::full::collision result(NO_HIT, {0, 0, 0});
 	BLIB::full::collision temp_result(false);
 
 	if (pre_check(static_cast<const BLIB::full::aabb_collider>(*a), static_cast<const BLIB::full::aabb_collider>(*b))) {
@@ -705,7 +705,7 @@ namespace BLIB::full {
 	}
 
 	collision SAT_triangle_triangle(const triangle& a, const triangle& b, const float3& axis) {
-		if (axis.mag_sq() < EPS * EPS) { return { FLT_MAX, 0 }; }
+		if (axis.mag_sq() < EPS * EPS) { return { FLT_MAX, {0, 0, 0} }; }
 
 		float a_min =  FLT_MAX;
 		float a_max = -FLT_MAX;
@@ -731,7 +731,7 @@ namespace BLIB::full {
 	}
 
 	collision SAT_box_box_axis(const float3& a_pos, const float3& a_size, const float3x3& a_axes, const float3& b_pos, const float3& b_size, const float3x3& b_axes, const float3& axis) {
-		if (axis.mag_sq() < EPS * EPS) { return collision(NO_HIT, 0); }
+		if (axis.mag_sq() < EPS * EPS) { return collision(NO_HIT, { 0, 0, 0 }); }
 
 		float3 L = axis.norm();
 		float3 T = a_pos - b_pos;
@@ -753,7 +753,7 @@ namespace BLIB::full {
 	}
 
 	collision SAT_box_box(const float3& a_pos, const float3& a_size, const float3x3& a_axes, const float3& b_pos, const float3& b_size, const float3x3& b_axes) {
-		collision min_collision(NO_HIT, 0), temp(false);
+		collision min_collision(NO_HIT, { 0, 0, 0 }), temp(false);
 
 		for (int i = 0; i < 3; i++) {
 			if (!(temp = SAT_box_box_axis(a_pos, a_size, a_axes, b_pos, b_size, b_axes, a_axes[i]))) { return false; }
@@ -778,7 +778,7 @@ namespace BLIB::full {
 	}
 
 	collision triangle_triangle(const triangle& a, const triangle& b) {
-		collision min_collision(FLT_MAX, 0), temp(false);
+		collision min_collision(FLT_MAX, { 0, 0, 0 }), temp(false);
 
 		if (!(temp = SAT_triangle_triangle(a, b, a.norm()))) { return false; }
 		if (temp.depth < min_collision.depth) { min_collision = temp; }
@@ -806,7 +806,7 @@ namespace BLIB::full {
 		uint32_t hit_count = model->ray_collision(mesh->get_trans(), p, ray, nullptr, nullptr);
 
 		if (hit_count % 2) {
-			collision min_collision(FLT_MAX, 0);
+			collision min_collision(FLT_MAX, { 0, 0, 0 });
 
 			for (const triangle& t : model->peek_triangles()) {
 				float3 t_n = ((t.B - t.A) % (t.C - t.A)).norm();
@@ -828,11 +828,11 @@ namespace BLIB::full {
 	collision aabb_box(const aabb_collider* a, const box_collider* b) {
 		float3 a_pos = a->get_trans().get_pos();
 		float3 a_size = a->get_size();
-		float3x3 a_axes(true);
+		float3x3 a_axes = float3x3::identity();
 
 		float3 b_pos = b->get_trans().get_pos();
 		float3 b_size = b->get_size();
-		float3x3 b_axes(b->get_rotation());
+		float3x3 b_axes(b->get_quaternion());
 
 		return SAT_box_box(a_pos, a_size, a_axes, b_pos, b_size, b_axes);
 	}
@@ -927,7 +927,7 @@ namespace BLIB::full {
 	}
 
 	collision aabb_mesh(const aabb_collider* a, const mesh_collider* b) {
-		return NO_COLLISION;
+		return NO_COLLISION_3;
 		//float3 a_pos = a->get_trans().get_pos();
 		//float3 a_size = a->get_size();
 		//float3x3 a_axes(true);
@@ -965,7 +965,7 @@ namespace BLIB::full {
 
 	collision aabb_plane(const aabb_collider* a, const plane_collider* b) {
 		float3 n = b->get_normal();
-		float3x3 axes(true);
+		float3x3 axes = float3x3::identity();
 		float3 corner = a->get_trans().get_pos();
 		float3 size = a->get_size();
 
@@ -980,7 +980,7 @@ namespace BLIB::full {
 	collision box_sphere(const box_collider* a, const sphere_collider* b) {
 		float3 a_pos = a->get_trans().get_pos();
 		float3 a_size = a->get_size();
-		float3x3 a_axes(a->get_rotation());
+		float3x3 a_axes(a->get_quaternion());
 
 		float3 b_pos = b->get_trans().get_pos();
 
@@ -1005,7 +1005,7 @@ namespace BLIB::full {
 	collision box_cylinder(const box_collider* a, const cylinder_collider* b) {
 		float3 a_pos3 = a->get_trans().get_pos();
 		float3 a_size = a->get_size();
-		float3x3 a_axes(a->get_rotation());
+		float3x3 a_axes(a->get_quaternion());
 
 		float3 b_pos3 = b->get_trans().get_pos();
 		float3 local = a_axes.rotate(b_pos3 - a_pos3);
@@ -1045,7 +1045,7 @@ namespace BLIB::full {
 
 		float3 a_pos = a->get_trans().get_pos();
 		float3 a_size = a->get_size();
-		float3x3 a_axes(a->get_rotation());
+		float3x3 a_axes(a->get_quaternion());
 
 		float3 b_pos = b->get_trans().get_pos();
 		float b_h = b->get_h();
@@ -1071,7 +1071,7 @@ namespace BLIB::full {
 	} 
 
 	collision box_mesh(const box_collider* a, const mesh_collider* b) {
-		return NO_COLLISION;
+		return NO_COLLISION_3;
 		//float3 a_pos = a->get_trans().get_pos();
 		//float3 a_size = a->get_size();
 		//float3x3 a_axes(a->get_rotation());
@@ -1107,7 +1107,7 @@ namespace BLIB::full {
 
 	collision box_plane(const box_collider* a, const plane_collider* b) {
 		float3 n = b->get_normal();
-		float3x3 axes(a->get_rotation());
+		float3x3 axes(a->get_quaternion());
 		float3 corner = a->get_trans().get_pos();
 		float3 size = a->get_size();
 
@@ -1173,7 +1173,7 @@ namespace BLIB::full {
 	}
 
 	collision sphere_mesh(const sphere_collider* a, const mesh_collider* b) {
-		return NO_COLLISION;
+		return NO_COLLISION_3;
 		//float r = a->get_r();
 		//float r_sq = r * r;
 		//float3 a_pos = a->get_trans().get_pos();
@@ -1238,7 +1238,7 @@ namespace BLIB::full {
 	}
 
 	collision cylinder_mesh(const cylinder_collider* a, const mesh_collider* b) {
-		return NO_COLLISION;
+		return NO_COLLISION_3;
 		// unfinished
 		//const float3 up(0, 1, 0);
 		//
@@ -1285,7 +1285,7 @@ namespace BLIB::full {
 	}
 
 	collision capsule_mesh(const capsule_collider* a, const mesh_collider* b) {
-		return NO_COLLISION;
+		return NO_COLLISION_3;
 		// unfinished
 		//const float3 up(0, 1, 0);
 		//
@@ -1324,7 +1324,7 @@ namespace BLIB::full {
 	}
 
 	collision mesh_plane(const mesh_collider* a, const plane_collider* b) {
-		return NO_COLLISION;
+		return NO_COLLISION_3;
 		// Iterate to find the "lowest point" on the normal, and collide that with plane
 	}
 
@@ -1343,7 +1343,7 @@ namespace BLIB::full {
 		float3 delta = a_pos - b_pos;
 		float3 overlap = (a_size + b_size) - delta.abs();
 
-		collision result(overlap.x, 0);
+		collision result(overlap.x, { 0, 0, 0 });
 		int axis = 0;
 
 		if (overlap.y < result.depth) { result.depth = overlap.y; axis = 1; }
@@ -1354,34 +1354,30 @@ namespace BLIB::full {
 		return result;
 	}
 
-	collision aabb_collider::collide_with(const box_collider*		o) const { return -aabb_box		(this, o); }
-	collision aabb_collider::collide_with(const sphere_collider*	o) const { return -aabb_sphere	(this, o); }
-	collision aabb_collider::collide_with(const cylinder_collider*	o) const { return -aabb_cylinder(this, o); }
-	collision aabb_collider::collide_with(const capsule_collider*	o) const { return -aabb_capsule	(this, o); }
-	collision aabb_collider::collide_with(const mesh_collider*		o) const { return NO_COLLISION;			   }//{ return aabb_mesh		(this, o); }
-	collision aabb_collider::collide_with(const plane_collider*		o) const { return -aabb_plane	(this, o); }
+	collision aabb_collider::collide_with(const box_collider*		o) const { return -aabb_box		(this, o);	}	
+	collision aabb_collider::collide_with(const sphere_collider*	o) const { return -aabb_sphere	(this, o);	}
+	collision aabb_collider::collide_with(const cylinder_collider*	o) const { return -aabb_cylinder(this, o);	}
+	collision aabb_collider::collide_with(const capsule_collider*	o) const { return -aabb_capsule	(this, o);	}
+	collision aabb_collider::collide_with(const mesh_collider*		o) const { return NO_COLLISION_3;			}//{ return aabb_mesh		(this, o); }
+	collision aabb_collider::collide_with(const plane_collider*		o) const { return -aabb_plane	(this, o);	}
 
 	// BOX
 
 	box_collider::operator aabb_collider() const {
-		float3 c { 
-			cosf(rotation.x),
-			cosf(rotation.y),
-			cosf(rotation.z),
-		};
+		float3x3 R = quat;
 
-		float3 s {
-			sinf(rotation.x),
-			sinf(rotation.y),
-			sinf(rotation.z),
-		};
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				R[i][i] = fabsf(R[i][j]);
+			}
+		}
 
 		aabb_collider out( 
 			nullptr,
 			{ 
-				dot({ fabsf(c.z * c.y), fabsf(c.z * s.y * s.x - s.z * c.x), fabsf(c.z * s.y * c.x + s.z * s.x) }, size),
-				dot({ fabsf(s.z * c.y), fabsf(s.z * s.y * s.x + c.z * c.x), fabsf(s.z * s.y * c.x - c.z * s.x) }, size),
-				dot({ fabsf(s.y      ), fabsf(c.y * s.x                  ), fabsf(c.y * c.x					 ) }, size) 
+				dot(R[0], size),
+				dot(R[1], size),
+				dot(R[2], size)
 			}
 		);
 
@@ -1394,26 +1390,26 @@ namespace BLIB::full {
 	collision box_collider::collide_with(const box_collider*		o) const {
 		float3 b_pos = trans.get_pos();
 		float3 b_size = get_size();
-		float3x3 b_axes(get_rotation());
+		float3x3 b_axes(get_quaternion());
 
 		float3 a_pos = o->get_trans().get_pos();
 		float3 a_size = o->get_size();
-		float3x3 a_axes(o->get_rotation());
+		float3x3 a_axes(o->get_quaternion());
 
 		return SAT_box_box(a_pos, a_size, a_axes, b_pos, b_size, b_axes);
 	}
 
-	collision box_collider::collide_with(const aabb_collider*		o) const { return aabb_box		(o, this); }
-	collision box_collider::collide_with(const sphere_collider*		o) const { return -box_sphere	(this, o); }
-	collision box_collider::collide_with(const cylinder_collider*	o) const { return -box_cylinder	(this, o); }
-	collision box_collider::collide_with(const capsule_collider*	o) const { return -box_capsule	(this, o); }
-	collision box_collider::collide_with(const mesh_collider*		o) const { return NO_COLLISION;			   }//{ return box_mesh		(this, o); }
-	collision box_collider::collide_with(const plane_collider*		o) const { return -box_plane	(this, o); }
+	collision box_collider::collide_with(const aabb_collider*		o) const { return aabb_box		(o, this);	}
+	collision box_collider::collide_with(const sphere_collider*		o) const { return -box_sphere	(this, o);	}
+	collision box_collider::collide_with(const cylinder_collider*	o) const { return -box_cylinder	(this, o);	}
+	collision box_collider::collide_with(const capsule_collider*	o) const { return -box_capsule	(this, o);	}
+	collision box_collider::collide_with(const mesh_collider*		o) const { return NO_COLLISION_3;			}//{ return box_mesh		(this, o); }
+	collision box_collider::collide_with(const plane_collider*		o) const { return -box_plane	(this, o);	}
 
 	// SPHERE 
 
 	sphere_collider::operator aabb_collider() const {
-		aabb_collider out(nullptr, r);
+		aabb_collider out(nullptr, float3{ r });
 
 		out.set_off(offset);
 		out.set_scl(scale);
@@ -1434,12 +1430,12 @@ namespace BLIB::full {
 		return { rs - dist, normal };
 	}
 
-	collision sphere_collider::collide_with(const aabb_collider*		o) const { return aabb_sphere		(o, this); }
-	collision sphere_collider::collide_with(const box_collider*			o) const { return box_sphere		(o, this); }
-	collision sphere_collider::collide_with(const cylinder_collider*	o) const { return -sphere_cylinder	(this, o); }
-	collision sphere_collider::collide_with(const capsule_collider*		o) const { return -sphere_capsule	(this, o); }
-	collision sphere_collider::collide_with(const mesh_collider*		o) const { return NO_COLLISION;			       }//{ return sphere_mesh		(this, o); }
-	collision sphere_collider::collide_with(const plane_collider*		o) const { return -sphere_plane		(this, o); }
+	collision sphere_collider::collide_with(const aabb_collider*		o) const { return aabb_sphere		(o, this);	}
+	collision sphere_collider::collide_with(const box_collider*			o) const { return box_sphere		(o, this);	}
+	collision sphere_collider::collide_with(const cylinder_collider*	o) const { return -sphere_cylinder	(this, o);	}
+	collision sphere_collider::collide_with(const capsule_collider*		o) const { return -sphere_capsule	(this, o);	}
+	collision sphere_collider::collide_with(const mesh_collider*		o) const { return NO_COLLISION_3;			    }//{ return sphere_mesh		(this, o); }
+	collision sphere_collider::collide_with(const plane_collider*		o) const { return -sphere_plane		(this, o);	}
 
 	// CYLINDER
 
@@ -1492,12 +1488,12 @@ namespace BLIB::full {
 		}
 	}
 
-	collision cylinder_collider::collide_with(const aabb_collider*		o) const { return aabb_cylinder		(o, this); }
-	collision cylinder_collider::collide_with(const box_collider*		o) const { return box_cylinder		(o, this); }
-	collision cylinder_collider::collide_with(const sphere_collider*	o) const { return sphere_cylinder	(o, this); }
-	collision cylinder_collider::collide_with(const capsule_collider*	o) const { return -cylinder_capsule	(this, o); }
-	collision cylinder_collider::collide_with(const mesh_collider*		o) const { return NO_COLLISION;			       }//{ return cylinder_mesh		(this, o); }
-	collision cylinder_collider::collide_with(const plane_collider*		o) const { return -cylinder_plane	(this, o); }
+	collision cylinder_collider::collide_with(const aabb_collider*		o) const { return aabb_cylinder		(o, this);	}
+	collision cylinder_collider::collide_with(const box_collider*		o) const { return box_cylinder		(o, this);	}
+	collision cylinder_collider::collide_with(const sphere_collider*	o) const { return sphere_cylinder	(o, this);	}
+	collision cylinder_collider::collide_with(const capsule_collider*	o) const { return -cylinder_capsule	(this, o);	}
+	collision cylinder_collider::collide_with(const mesh_collider*		o) const { return NO_COLLISION_3;			    }//{ return cylinder_mesh		(this, o); }
+	collision cylinder_collider::collide_with(const plane_collider*		o) const { return -cylinder_plane	(this, o);	}
 
 	// CAPSULE
 
@@ -1540,12 +1536,12 @@ namespace BLIB::full {
 		return { rs - dist, normal };
 	}
 
-	collision capsule_collider::collide_with(const aabb_collider*		o) const { return aabb_capsule		(o, this); }
-	collision capsule_collider::collide_with(const box_collider*		o) const { return box_capsule		(o, this); }
-	collision capsule_collider::collide_with(const sphere_collider*		o) const { return sphere_capsule	(o, this); }
-	collision capsule_collider::collide_with(const cylinder_collider*	o) const { return cylinder_capsule	(o, this); }
-	collision capsule_collider::collide_with(const mesh_collider*		o) const { return NO_COLLISION;			       }//{ return capsule_mesh		(this, o); }
-	collision capsule_collider::collide_with(const plane_collider*		o) const { return -capsule_plane	(this, o); }
+	collision capsule_collider::collide_with(const aabb_collider*		o) const { return aabb_capsule		(o, this);	}
+	collision capsule_collider::collide_with(const box_collider*		o) const { return box_capsule		(o, this);	}
+	collision capsule_collider::collide_with(const sphere_collider*		o) const { return sphere_capsule	(o, this);	}
+	collision capsule_collider::collide_with(const cylinder_collider*	o) const { return cylinder_capsule	(o, this);	}
+	collision capsule_collider::collide_with(const mesh_collider*		o) const { return NO_COLLISION_3;			    }//{ return capsule_mesh		(this, o); }
+	collision capsule_collider::collide_with(const plane_collider*		o) const { return -capsule_plane	(this, o);	}
 
 	// MESH
 
@@ -1555,7 +1551,7 @@ namespace BLIB::full {
 	}
 
 	collision mesh_collider::collide_with(const mesh_collider*		o) const {
-		return NO_COLLISION;
+		return NO_COLLISION_3;
 		//for (const triangle& ta : get_mesh()->peek_triangles()) {
 		//	for (const triangle& tb : o->get_mesh()->peek_triangles()) {
 		//		if (triangle_triangle(ta, tb)) { return true; }
@@ -1568,16 +1564,16 @@ namespace BLIB::full {
 		//return false;
 	}
 
-	collision mesh_collider::collide_with(const aabb_collider*		o) const { return NO_COLLISION; }//{ return aabb_mesh		(o, this); }
-	collision mesh_collider::collide_with(const box_collider*		o) const { return NO_COLLISION; }//{ return box_mesh		(o, this); }
-	collision mesh_collider::collide_with(const sphere_collider*	o) const { return NO_COLLISION; }//{ return sphere_mesh		(o, this); }
-	collision mesh_collider::collide_with(const cylinder_collider*	o) const { return NO_COLLISION; }//{ return cylinder_mesh	(o, this); }
-	collision mesh_collider::collide_with(const capsule_collider*	o) const { return NO_COLLISION; }//{ return capsule_mesh	(o, this); }
-	collision mesh_collider::collide_with(const plane_collider*		o) const { return NO_COLLISION; }//{ return -mesh_plane		(this, o); }
+	collision mesh_collider::collide_with(const aabb_collider*		o) const { return NO_COLLISION_3; }//{ return aabb_mesh		(o, this); }
+	collision mesh_collider::collide_with(const box_collider*		o) const { return NO_COLLISION_3; }//{ return box_mesh		(o, this); }
+	collision mesh_collider::collide_with(const sphere_collider*	o) const { return NO_COLLISION_3; }//{ return sphere_mesh		(o, this); }
+	collision mesh_collider::collide_with(const cylinder_collider*	o) const { return NO_COLLISION_3; }//{ return cylinder_mesh	(o, this); }
+	collision mesh_collider::collide_with(const capsule_collider*	o) const { return NO_COLLISION_3; }//{ return capsule_mesh	(o, this); }
+	collision mesh_collider::collide_with(const plane_collider*		o) const { return NO_COLLISION_3; }//{ return -mesh_plane		(this, o); }
 
 	// PLANE
 
-	collision plane_collider::collide_with(const plane_collider* o) const { return NO_COLLISION; } // A plane x plane collision should never be used.
+	collision plane_collider::collide_with(const plane_collider* o) const { return NO_COLLISION_3; } // A plane x plane collision should never be used.
 
 	collision plane_collider::collide_with(const aabb_collider*		o) const { return aabb_plane		(o, this); }
 	collision plane_collider::collide_with(const box_collider*		o) const { return box_plane			(o, this); }
@@ -1706,7 +1702,7 @@ namespace BLIB::full {
 
 	float box_collider::_ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const {
 		float3 pos = get_trans().get_pos();
-		float3x3 axes(get_trans().get_ang());
+		float3x3 axes(get_trans().get_qtn());
 		float3 size = get_size();
 
 		float3x3 rotated_size;
@@ -1818,7 +1814,7 @@ namespace BLIB::full {
 
 		// Check sides
 		flat::circle_collider circle(nullptr, r);
-		circle.sync(pos_xz, 1, 0);
+		circle.sync(pos_xz, float2{ 1 }, 0);
 
 		float2 position_xz, normal_xz;
 
@@ -1885,7 +1881,7 @@ namespace BLIB::full {
 	}
 
 	float plane_collider::_ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const {
-		return ray_pick_plane(ray_origin, ray_direction, trans.get_pos(), normal, out_position, out_normal);
+		return ray_pick_plane(ray_origin, ray_direction, trans.get_pos(), get_normal(), out_position, out_normal);
 	}
 
 	// Debug Rendering
@@ -1893,10 +1889,10 @@ namespace BLIB::full {
 	void aabb_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_cube(-size, size)); }
 		transform collider_trans;
-		collider_trans.set_ang(0);
+		collider_trans.set_qtn(quaternion::identity());
 		collider_trans.set_scl(get_scl());
 		collider_trans.set_pos(trans.get_pos());
-		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" }) & debug_model->default_rs()).set();
 		debug_model->render(collider_trans, WHITE);
 		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
@@ -1904,10 +1900,10 @@ namespace BLIB::full {
 	void box_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_cube(-size, size)); }
 		transform collider_trans;
-		collider_trans.set_ang(get_rotation());
+		collider_trans.set_qtn(get_quaternion());
 		collider_trans.set_scl(get_scl());
 		collider_trans.set_pos(trans.get_pos());
-		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" }) & debug_model->default_rs()).set();
 		debug_model->render(collider_trans, WHITE);
 		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
@@ -1915,10 +1911,10 @@ namespace BLIB::full {
 	void sphere_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_sphere()); }
 		transform collider_trans;
-		collider_trans.set_ang(0);
-		collider_trans.set_scl(get_r());
+		collider_trans.set_qtn(quaternion::identity());
+		collider_trans.set_scl(float3{ get_r() });
 		collider_trans.set_pos(trans.get_pos());
-		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" }) & debug_model->default_rs()).set();
 		debug_model->render(trans, WHITE);
 		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
@@ -1926,10 +1922,10 @@ namespace BLIB::full {
 	void cylinder_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_cylinder()); }
 		transform collider_trans;
-		collider_trans.set_ang(0);
+		collider_trans.set_qtn(quaternion::identity());
 		collider_trans.set_scl(float3{ get_r(), get_h(), get_r() } * 2);
 		collider_trans.set_pos(trans.get_pos());
-		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" }) & debug_model->default_rs()).set();
 		debug_model->render(collider_trans, WHITE);
 		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
@@ -1937,18 +1933,18 @@ namespace BLIB::full {
 	void capsule_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_capsule()); }
 		transform collider_trans;
-		collider_trans.set_ang(0);
+		collider_trans.set_qtn(quaternion::identity());
 		collider_trans.set_scl(float3{ get_r(), get_h(), get_r() } * 2);
 		collider_trans.set_pos(trans.get_pos());
-		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" }) & debug_model->default_rs()).set();
 		debug_model->render(collider_trans, WHITE);
 		for (auto& child : get_children()) { child->render_debug(rs); }
 	}
 
 	void mesh_collider::_render_debug(render_settings rs) const {
-		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" }) & debug_model->default_rs()).set();
 		transform collider_trans;
-		collider_trans.set_ang(0);
+		collider_trans.set_qtn(quaternion::identity());
 		collider_trans.set_scl(get_scl());
 		collider_trans.set_pos(trans.get_pos());
 		model_ptr->render(collider_trans, WHITE);
@@ -1957,9 +1953,9 @@ namespace BLIB::full {
 
 	void plane_collider::_render_debug(render_settings rs) const {
 		if (!debug_model) { debug_model.reset(create_quad()); }
-		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" })).set();
+		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" }) & debug_model->default_rs()).set();
 		transform collider_trans;
-		collider_trans.set_ang(face_to(normal).to_euler());
+		collider_trans.set_qtn(face_to(get_normal()));
 		collider_trans.set_scl(get_scl());
 		collider_trans.set_pos(trans.get_pos());
 		debug_model->render(collider_trans, WHITE);

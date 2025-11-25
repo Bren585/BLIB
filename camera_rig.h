@@ -51,7 +51,7 @@ namespace BLIB {
 			void _init_debug() override {
 				std::unique_ptr<flat::object> debug_spr = std::make_unique<flat::object>();
 				debug_spr->make_dummy(WHITE);
-				debug_spr->size = 25;
+				debug_spr->set_size(float2{ 25 });
 				debug_obj = std::move(debug_spr);
 			}
 
@@ -63,14 +63,14 @@ namespace BLIB {
 #endif
 
 		public:
-			camera_rig(const object* anchor, float2 offset = 0, float offset_angle = 0) : anchor(anchor), offset_pos(offset), offset_angle(offset_angle) {}
+			camera_rig(const object* anchor, float2 offset = float2{ 0 }, float offset_angle = 0) : anchor(anchor), offset_pos(offset), offset_angle(offset_angle) {}
 			virtual ~camera_rig() {}
 
-			float2	get_offset()			const { return offset_pos; }
-			void	set_offset(float2 p) { offset_pos = p; }
-			void	add_offset(float2 d) { offset_pos += d; }
+			float2	get_offset()	const	{ return offset_pos; }
+			void	set_offset(float2 p)	{ offset_pos = p; }
+			void	add_offset(float2 d)	{ offset_pos += d; }
 
-			float2	get_offset_angle()			const { return offset_angle; }
+			float	get_offset_angle()	const { return offset_angle; }
 			void	set_offset_angle(float a) { offset_angle = a; }
 			void	add_offset_angle(float d) { offset_angle += d; }
 		};
@@ -83,7 +83,7 @@ namespace BLIB {
 			}
 
 		public:
-			static_rig(const object* anchor, float2 offset = 0, float angle = 0) : camera_rig(anchor, offset, angle) {}
+			static_rig(const object* anchor, float2 offset = float2{ 0 }, float angle = 0) : camera_rig(anchor, offset, angle) {}
 		};
 	}
 
@@ -99,7 +99,7 @@ namespace BLIB {
 			void _init_debug() override {
 				std::unique_ptr<full::object> debug_mdl = std::make_unique<full::object>();
 				debug_mdl->set_model(create_cube());
-				debug_mdl->set_scl(0.25f);
+				debug_mdl->set_scl(float3{ 0.25f });
 				debug_mdl->add_settings({ rasterize::WIRE });
 				debug_obj = std::move(debug_mdl);
 			}
@@ -125,7 +125,7 @@ namespace BLIB {
 		class static_rig : public camera_rig {
 		private:
 			void sync_rig() override {
-				float3x3 rotation(anchor->get_ang() + offset_trans.get_ang());
+				float3x3 rotation(anchor->get_qtn() * offset_trans.get_qtn());
 				cam->set_focus(cam->get_eye() + rotation.forward());
 				cam->set_up(rotation.up());
 			}
@@ -142,11 +142,11 @@ namespace BLIB {
 		float max_distance;
 
 		void sync_rig() override {
-			float3x3 rotation(anchor->get_ang() + offset_trans.get_ang());
+			float3x3 rotation(anchor->get_qtn() * offset_trans.get_qtn());
 			float3 camera_pos = rotation.inv_rotate({ 0, 0, -distance });
 			offset_trans.set_pos(camera_pos);
 			cam->set_focus(anchor->get_pos());
-			cam->set_up(float3x3(anchor->get_ang()).up());
+			cam->set_up(float3x3(anchor->get_qtn()).up());
 		}
 
 	public:

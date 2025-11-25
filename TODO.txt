@@ -1,17 +1,12 @@
 Lighting
-- Move lighting engine to a class that can live inside of scene
 - Fix slightly misaligned shadows
-- Fix draw_transparent
 
 Particles
-- rework billboards -> Make a PS and an inheritence of sprite (or a brother?)
 - particles
-
-move sliders -> "Attribute Controller" class
-
-Evaluate allowing non-const model passing for objects (absolutely disallow if possible)
 
 Create Model Config Tool
 Create Sprite Config Tool (Animations)
 
-Make proper uvs for some geometric primitives
+Evaluate allowing non-const model passing for objects (absolutely disallow if possible)
+move sliders -> "Attribute Controller" class
+Make proper uvs for some geometric primitives?

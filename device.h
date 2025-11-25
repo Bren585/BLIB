@@ -31,9 +31,14 @@ private:
 			hr = get()->QueryInterface(IID_ID3D11Debug, (void**)(instance().debug_interface.GetAddressOf())); VERIFY;
 			hr = get()->QueryInterface(IID_ID3D11InfoQueue, (void**)(instance().info_queue.GetAddressOf())); VERIFY;
 
+			D3D11_MESSAGE_ID hide[] = { D3D11_MESSAGE_ID_DEVICE_DRAW_RENDERTARGETVIEW_NOT_SET };
+			D3D11_INFO_QUEUE_FILTER filter = {};
+			filter.DenyList.NumIDs = _countof(hide);
+			filter.DenyList.pIDList = hide;
+
 			instance().info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
 			instance().info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, FALSE);
-			instance().info_queue->AddStorageFilterEntries(nullptr);
+			instance().info_queue->AddStorageFilterEntries(&filter);
 		}
 #endif
 	}
@@ -43,6 +48,8 @@ public:
 	device(device const&&) = delete;
 	device operator=(device const&) = delete;
 	device operator=(device const&&) = delete;
+
+	static void reset() { instance().immediate_context.Reset(); instance().device_ptr.Reset(); }
 
 	static ID3D11Device*			get()				{ return instance().device_ptr.Get(); }
 	static ID3D11Device**			get_address()		{ return instance().device_ptr.GetAddressOf(); }

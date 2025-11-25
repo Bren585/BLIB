@@ -6,18 +6,20 @@
 namespace BLIB {
 	namespace generic {
 		void scene::render(const camera* cam, const environment_lights* scene_lights, const std::vector<light>* lights) const {
-			if (cam) cam->bind();
-			else if (active_camera) active_camera->bind();
+			const camera* active = nullptr;
+			if (cam) active = cam;
+			else if (active_camera) active = active_camera;
 			if (lights) { lighting::bind_lights(this, scene_lights, lights); }
-			_render();
+			_render(active);
 		}
 	}
 
 	namespace flat {
-		void scene::_render() const {
+		void scene::_render(const camera* cam) const {
+			annotate("flat::scene");
 			canvas::clear();
 			canvas::focus();
-			draw({});
+			draw();
 			canvas::unfocus();
 			canvas::render_to_main();
 		}
@@ -25,10 +27,11 @@ namespace BLIB {
 
 	namespace full {
 
-		void scene::opaque_pass() const {
+		void scene::opaque_pass(const camera* cam) const {
 			annotate("opaque pass");
 			for (auto& layer : geometry_buffer) { if (layer) layer->clear(COLORLESS); }
 			render_target::quick_focus(geometry_buffer);
+			cam->bind();
 			draw({pixel_shader("deferred_begin")});
 		}
 
@@ -39,28 +42,28 @@ namespace BLIB {
 			for (int i = 0; i < geometry_layer_count; i++) { if (geometry_buffer[i]) geometry_buffer[i]->bind_SRV(i); }
 			//geometry_buffer[0]->bind_depth(geometry_layer_count);
 
-			render_settings{ pixel_shader("deferred_lighting"), vertex_shader(DEFAULT_FLAT) }.set();
+			(render_settings{ pixel_shader("deferred_lighting"), stencil::DEPTH_NONE } & sprite::default_rs()).set();
 
-			uint32_t stride{ sizeof(sprite::vertex) };
-			uint32_t offset{ 0 };
-			device::context()->IASetVertexBuffers(0, 1, quad_buffer.GetAddressOf(), &stride, &offset);
-			device::context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-			device::context()->Draw(4, 0);
+			update_point_buffer(point_buffer.Get());
+
+			draw_points(point_buffer.GetAddressOf());
 		}
 
-		void scene::transparent_pass() const {
+		void scene::transparent_pass(const camera* cam) const {
 			annotate("transparent pass");
+			cam->bind();
 			draw_transparent();
 		}
 
-		void scene::_render() const {
+		void scene::_render(const camera* cam) const {
 			if (!get_camera()) return;
 			annotate("full::scene");
-			opaque_pass();
 			canvas::clear();
+			canvas::focus(FOCUS_DEPTH);
+			opaque_pass(cam);
 			canvas::focus();
 			lighting_pass();
-			transparent_pass();
+			transparent_pass(cam);
 			canvas::unfocus();
 			canvas::render_to_main();
 		}
@@ -74,6 +77,6 @@ namespace BLIB {
 	}
 
 	void camera_scene::render(const camera* cam, const environment_lights* scene_lights, const std::vector<light>* lights) const {
-		static_cast<const generic::scene*>(this)->_render();
+		static_cast<const generic::scene*>(this)->_render(get_camera() ? get_camera() : cam);
 	}
 }

@@ -2,7 +2,6 @@
 #include "shadows.hlsli"
 #include "lighting.hlsli"
 #include "camera.hlsli"
-#include "math_constants.hlsli"
 
 SamplerState pixel			: register(s1);
 SamplerState pixel_clamp	: register(s3);
@@ -31,58 +30,7 @@ float calculate_sharpness(float3 light_position, float fade)
     return saturate(1 - pow(d, e));
 }
 
-float3 calculate_lighting(float3 world_position, float3 albedo, float3 N, float3 L, float3 V, float3 H, float R, float M, float3 S)
-{
-    /* Precalcs ******************************************************************************/
-    
-    float NdotL = saturate(dot(N, L));
-    float NdotV = saturate(dot(N, V));
-    float NdotH = saturate(dot(N, H));
-    float VdotH = saturate(dot(V, H));
-    
-    /* Fresnel  ******************************************************************************/
-    
-    float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo.rgb, M);
-    float3 F = F0 + ((1 - F0) * pow(1.0 - VdotH, 5.0));
-    
-    /* GGX      ******************************************************************************/
-    
-    float D; // Distribution
-    {
-        float a = R * R;
-        float d = (NdotH * NdotH) * (a - 1.0) + 1.0;
-        D = a / (PI * d * d);
-    }
-    
-    /* Geometry ******************************************************************************/
-    
-    float G; // Geometry
-    {
-        float k = R + 1.0;
-        k = (k * k) / 8.0;
-        float ki = (1 - k);
-        float Gv = NdotV / (NdotV * ki + k);
-        float Gl = NdotL / (NdotL * ki + k);
-        G = Gv * Gl;
-    }
-    
-    /* Specular ******************************************************************************/
-    
-    float3 specular; // Specular
-    {
-        float3 n = D * F * G;
-        float d = 4.0 * NdotV * NdotL + 0.001;
-        specular = n / d;
-    }
-    
-    /* Diffuse  ******************************************************************************/
-    
-    float3 diffuse = (1.0 - F) * (1.0 - M); // Diffuse
-
-    return (diffuse * S + specular) * NdotL;
-}
-
-float4 main(VS_OUT pin) : SV_TARGET
+float4 main(PS_IN pin) : SV_TARGET
 {
     /* Sampling ******************************************************************************/
     
@@ -110,7 +58,6 @@ float4 main(VS_OUT pin) : SV_TARGET
     float3 S = O * albedo.rgb / PI; // Shine
     
     /* Skylight ******************************************************************************/
-    
     
     float3 sky_lighting; 
     {
