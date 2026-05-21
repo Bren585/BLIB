@@ -8,13 +8,13 @@ namespace BLIB {
 		const size_t max_vertices;
 		std::vector<vertex> vertices;
 
-		void begin(color color);
+		void begin(color color, float2 tile_size);
 		void end();
 
 	protected:
 
-		void prerender(float2 pos, float2 scale, float2 pivot, float rotation, float2 tile_index, float2 tile_size);
-		virtual void render_each(float2 pos, float2 scale, float2 pivot, float rotation, float2 tile_index, float2 tile_size) = 0;
+		void prerender(float2 pos, float2 scale, float2 pivot, float rotation, float2 tile_index, float2 tile_size = float2{0});
+		virtual void render_all(float2 pos, float2 scale, float2 pivot, float rotation) = 0;
 
 	public:
 		sprite_batch(const string& filename, size_t max_sprites, flags flags = batch_flags);
@@ -23,8 +23,8 @@ namespace BLIB {
 		~sprite_batch() {}
 
 		void render(float2 pos, float2 scale, float2 pivot, float rotation, color color, float2 tile_index, float2 tile_size) override {
-			begin(color);
-			render_each(pos, scale, pivot, rotation, tile_index, tile_size);
+			begin(color, tile_size);
+			render_all(pos, scale, pivot, rotation);
 			end();
 		}
 	};

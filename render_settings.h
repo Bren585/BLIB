@@ -4,6 +4,7 @@
 #include "depth_stencil.h"
 #include "sampler.h"
 #include "shader.h"
+#include "verify.h"
 
 namespace BLIB {
 

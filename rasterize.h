@@ -23,5 +23,7 @@ namespace BLIB {
 		//ID3D11RasterizerState* get(state state);
 
 		void set(state state = DEFAULT);
+
+		void release_all();
 	}
 }

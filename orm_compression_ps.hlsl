@@ -7,6 +7,6 @@ SamplerState pixel_sampler : register(s1);
 
 float4 main(PS_IN pin) : SV_TARGET
 {
-    float2 pos = pin.texcoord;
-    return float4(O.Sample(pixel_sampler, pos).r, R.Sample(pixel_sampler, pos).g, M.Sample(pixel_sampler, pos).b, 1.0f);
+    float2 texcoord = pin.texcoord;
+    return float4(O.Sample(pixel_sampler, texcoord).r, R.Sample(pixel_sampler, texcoord).r, M.Sample(pixel_sampler, texcoord).r, 1.0f);
 }

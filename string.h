@@ -22,6 +22,7 @@ public:
 	string(char					data)	{ this->data = data; }
 	string(const std::wstring&  data)	: string(data.c_str()) {}
 	string(const wchar_t*		data);
+	string(wchar_t data				)	{ wchar_t d[2] = {data, 0}; *this = string(d); }
 	string(int					data);
 	string(float				data, int precision = string::precision);
 
@@ -78,6 +79,7 @@ public:
 	// Other
 	char& operator[](int i) { return data[i]; }
 	size_t length() const { return data.length(); }
+	void pop_back() { if (!data.empty()) data.pop_back(); }
 
 	SERIALIZE(data)
 };

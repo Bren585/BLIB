@@ -153,5 +153,7 @@ namespace BLIB {
 			current_state = state;
 			device::context()->OMSetBlendState(get(state), nullptr, 0xFFFFFF);
 		}
+
+		void release_all() { blend_states.clear(); }
 	}
 }

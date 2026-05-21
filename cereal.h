@@ -7,6 +7,8 @@
 #include <cereal/types/array.hpp>
 #include <cereal/types/set.hpp>
 #include <cereal/types/unordered_map.hpp>
+#include <cereal/types/queue.hpp>
+#include <cereal/types/string.hpp>
 
 #define NVP(obj, name) cereal::make_nvp(#name, obj.name)
 #define SERIALIZE(...)		template <class Ar> inline void serialize(Ar& ar) { ar(__VA_ARGS__); }

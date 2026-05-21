@@ -6,34 +6,40 @@
 
 namespace BLIB {
 	void material_texture_unpacked_orm::force_construct() {
-		std::unique_ptr<sprite> channels[3];
-		float2 size;
+		annotate("unpack_orm");
 
-		if (filenames[0] == "") { channels[0] = std::make_unique<sprite>(filenames[0]);	float2 channel_size = channels[0]->get_size(); if (channel_size > size) size = channel_size; }
+		RENDER_LOCK;
+		std::unique_ptr<sprite> channels[3];
+		float2 size = { 1, 1 };
+
+		if (filenames[0] != "") { channels[0] = std::make_unique<sprite>(filenames[0]);	float2 channel_size = channels[0]->get_size(); if (channel_size > size) size = channel_size; }
 		else					{ channels[0] = std::make_unique<sprite>(color{c.r, 0, 0}, float2{ 1 }); }
 
-		if (filenames[1] == "")	{ channels[1] = std::make_unique<sprite>(filenames[1]); float2 channel_size = channels[1]->get_size(); if (channel_size > size) size = channel_size; }
+		if (filenames[1] != "")	{ channels[1] = std::make_unique<sprite>(filenames[1]); float2 channel_size = channels[1]->get_size(); if (channel_size > size) size = channel_size; }
 		else					{ channels[1] = std::make_unique<sprite>(color{0, c.g, 0}, float2{ 1 }); }
 
-		if (filenames[2] == "")	{ channels[2] = std::make_unique<sprite>(filenames[2]); float2 channel_size = channels[2]->get_size(); if (channel_size > size) size = channel_size; }
+		if (filenames[2] != "")	{ channels[2] = std::make_unique<sprite>(filenames[2]); float2 channel_size = channels[2]->get_size(); if (channel_size > size) size = channel_size; }
 		else					{ channels[2] = std::make_unique<sprite>(color{0, 0, c.b}, float2{ 1 }); }
 
-		for (int i = 0; i < 3; i++) { device::context()->PSSetShaderResources(i, 1, channels[i]->get_SRV()); }
-
 		canvas capture(size);
-		capture.focus(); // set RTV
+		capture.focus();
 
-		Microsoft::WRL::ComPtr<ID3D11Buffer> point_buffer;
-		make_point_buffer(point_buffer.GetAddressOf());
-	
-		sprite::load_shader();
 		render_settings rs{ pixel_shader{"orm_compression"} };
 		rs &= sprite::default_rs();
 		rs.set();
 
-		update_point_buffer(point_buffer.Get(), size / 2, size);
+		for (int i = 0; i < 3; i++) { device::context()->PSSetShaderResources(i, 1, channels[i]->get_SRV()); }
+
+		Microsoft::WRL::ComPtr<ID3D11Buffer> point_buffer, constant_buffer;
+
+		make_point_buffer(point_buffer.GetAddressOf());
+		update_point_buffer(point_buffer.Get(), size / 2, float2{ 1 }, C_CC, 0, float2{ 0 });
+
+		make_constant_buffer(constant_buffer.GetAddressOf());
+		update_constant_buffer(constant_buffer.GetAddressOf(), size, WHITE, size);
 
 		draw_points(point_buffer.GetAddressOf());
+		capture.unfocus();
 
 		data.reset(capture.peek_sprite()->clone());
 	}

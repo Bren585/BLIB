@@ -128,3 +128,9 @@ void shader::set_gs(const string& gs_name) {
 	load_gs(gs_name);
 	device::context()->GSSetShader(geometry_shaders[gs_name].Get(), nullptr, 0);
 }
+
+void shader::release_all() {
+	vertex_shaders.clear();
+	pixel_shaders.clear();
+	geometry_shaders.clear();
+}

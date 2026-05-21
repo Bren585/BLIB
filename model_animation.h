@@ -29,26 +29,33 @@ namespace BLIB {
 		SERIALIZE(name, sampling_rate, sequence)
 
 	private:
-		float	timer	{ 0.0f };
-		bool	loop	{ false };
+		float	timer			{ 0.0f	};
+		bool	loop			{ false };
+		float	playback_speed	{ 1.0f	};
 
 	public:
 		inline bool update(float elapsed_time) {
-			timer += elapsed_time;
-			if (get_frame(timer) > sequence.size() - 1) {
-				timer -= get_duration();
+			timer += elapsed_time * playback_speed;
+			float duration = get_duration();
+			if (timer > duration) {
+				if (loop) timer -= duration;
 				return loop;
 			}
 			return true;
 		}
-		inline void reset()					{ timer = 0; }
-		inline void set_loop(bool l = true)	{ loop = l; }
+		inline void reset		(				) { timer = 0; }
+		inline void set_loop	(bool l = true	) { loop = l; }
+		inline void set_playback(float speed = 1) { playback_speed = (speed > 0 ? speed : 1); }
 
-		inline float			get_duration()					const { return (sequence.size() - 1) / sampling_rate;														}
-		inline float			get_timer()						const { return timer;																						}
-		inline int				get_frame(float time)			const { return clamp(0, static_cast<int>(time * sampling_rate), static_cast<int>(sequence.size()) - 1);		}
-		inline const keyframe&	get_keyframe(float time = -1)	const { return sequence.at(get_frame((time == -1) ? timer : time));											}
-		inline bool				is_loop()						const { return loop;																						}
+		inline float			get_duration		(				) const { return static_cast<float>(sequence.size()) / sampling_rate;					}
+		inline float			get_play_duration	(				) const { return static_cast<float>(sequence.size()) / sampling_rate / playback_speed;	}
+		inline float			get_timer			(				) const { return timer;																	}
+		inline float			get_remaining_time	(				) const { return get_duration() - get_timer();											}
+		inline int				get_frame			(float time		) const { return static_cast<int>(time * sampling_rate);								}
+		inline int				get_valid_frame		(float time		) const { return clamp(0, get_frame(time), static_cast<int>(sequence.size()) - 1);		}
+		inline const keyframe&	get_keyframe		(float time = -1) const { return sequence[get_valid_frame((time == -1) ? timer : time)];				}
+		inline bool				is_loop				(				) const { return loop;																	}
+		inline bool				is_active			(				) const { return loop || timer < get_duration();										}
 
 	};
 

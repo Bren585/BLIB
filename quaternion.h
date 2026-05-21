@@ -16,6 +16,15 @@ public:
 	quaternion(const float4& v)						: float4(v)				{}
 	quaternion(const xmvector& v)					: float4(v)				{}
 	
+	static quaternion identity() { return quaternion(0, 0, 0, 1); }
+
+	quaternion norm() const {
+		bool degen = true;
+		for (int i = 0; i < 4; i++) { if (!is_zero(operator[](i))) { degen = false; break; } }
+		if (degen) return identity();
+		else return operator/(mag());
+	}
+
 	quaternion(const float3x3& m) {
 		const float3 right = m.right(), up = m.up(), forward = m.forward();
 		float rx = right.x, uy = up.y, fz = forward.z;
@@ -61,28 +70,23 @@ public:
 		norm();
 	}
 
-	static quaternion identity() { return quaternion(0, 0, 0, 1); }
+	quaternion operator*(const float4& v) const {
+		return quaternion(
+			w * v.x + x * v.w + y * v.z - z * v.y,
+			w * v.y - x * v.z + y * v.w + z * v.x,
+			w * v.z + x * v.y - y * v.x + z * v.w,
+			w * v.w - x * v.x - y * v.y - z * v.z
+		);
+	}
 
 	quaternion operator*(const quaternion& q) const {
-		return quaternion(
-			w * q.x + x * q.w + y * q.z - z * q.y,
-			w * q.y - x * q.z + y * q.w + z * q.x,
-			w * q.z + x * q.y - y * q.x + z * q.w,
-			w * q.w - x * q.x - y * q.y - z * q.z
-		).norm();
+		return operator*(float4(q)).norm();
 	}
 
 	quaternion operator*=(const quaternion& q) { return *this = operator*(q); }
 
 	quaternion operator*	(float s) const { return float4::operator*(s);	}
 	quaternion operator*=	(float s)		{ return float4::operator*=(s);	}
-
-	quaternion norm() const {
-		bool degen = true;
-		for (int i = 0; i < 4; i++) { if (!is_zero(operator[](i))) { degen = false; break; } }
-		if (degen) return identity();
-		else return operator/(mag());
-	}
 
 	quaternion conj() const { return quaternion(-x, -y, -z, w); }
 
@@ -94,12 +98,12 @@ public:
 
 	float3 rotate(const float3& v) {
 		if (!v) return v;
-		return ((*this) * quaternion{ v, 0 } * conj()).xyz();
+		return ((*this) * float4{ v, 0 } * float4(conj())).xyz();
 	}
 
 	static quaternion from_axis_angle(float3 axis, float angle) {
 		axis = axis.norm();
-		return { axis * sinf(angle * 0.5f), cosf(angle * 0.5f) };
+		return quaternion{ axis * sinf(angle * 0.5f), cosf(angle * 0.5f) }.norm();
 	}
 
 	static quaternion from_euler(const float3& rpy) {
@@ -114,8 +118,28 @@ public:
 		};
 	}
 
-	static quaternion from_vector(const float3& v) {
-		return face_to(v);
+	static quaternion face_to(const float3& local_vector, const float3& dest_vector) {
+		float d = dot(local_vector, dest_vector);
+		
+		if (d > ONE_APPROX) {
+			return identity();
+		}
+
+		if (d < -ONE_APPROX) {
+			float3 axis = std::abs(local_vector.x) < 0.9f ? float3(1, 0, 0) : float3(0, 1, 0);
+			axis = (local_vector % axis).norm();
+			return from_axis_angle(axis, PI);
+		}
+
+		float3 axis = local_vector % dest_vector;
+		if (axis) {
+			axis.norm();
+			float angle = acosf(dot(local_vector, dest_vector));
+			if (non_zero(angle)) {
+				return from_axis_angle(axis, angle);
+			}
+		}
+		return identity();
 	}
 
 	operator float3x3() const {
@@ -163,4 +187,3 @@ inline quaternion slerp(const quaternion& a, quaternion b, float t) {
 
 	return (a * w1 + b * w2).norm();
 }
-

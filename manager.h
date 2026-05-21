@@ -17,7 +17,7 @@ namespace BLIB {
 	namespace manager {
 
 		namespace _private {
-			auto& get_tasks();
+			std::unordered_map<task_id, std::unique_ptr<status>>& get_tasks();
 		}
 
 		constexpr int scene_stack_size = 4;

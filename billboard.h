@@ -4,10 +4,17 @@
 namespace BLIB {
 
 	class billboard : public model, public mesh {
-	private:
+	protected:
+		struct point {
+			float4 position = float4{ 0 };
+			float2 size		= float2{ 1 };
+			float2 uv_size	= float2{ 1 };
+			float2 uv_index = float2{ 0 };
+		};
+
 		virtual billboard* clone_impl() const override { return new billboard(*this); }
 		virtual void render(const float4x4& world, const color& material_color) const override;
-		const std::vector<triangle> dummy_triangles;
+		inline static const std::vector<triangle> dummy_triangles = std::vector<triangle>();
 
 	public:
 		billboard(float2 size = float2{ 1 });

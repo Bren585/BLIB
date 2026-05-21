@@ -10,6 +10,10 @@ namespace BLIB {
 
 		HRESULT make_dummy(ID3D11ShaderResourceView** shader_resource_view, color value, float2 dimension);
 
+		HRESULT save_to_file(ID3D11Resource* resource, string filename);
+
+		HRESULT save_to_file(ID3D11ShaderResourceView* shader_resource_view, string filename);
+
 		void release_all();
 	}
 }

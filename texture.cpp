@@ -2,6 +2,8 @@
 #include "texture.h"
 
 #include <WICTextureLoader.h>
+#include <ScreenGrab.h>
+#include <wincodec.h>
 
 namespace BLIB {
 	namespace texture {
@@ -67,6 +69,17 @@ namespace BLIB {
 			hr = device::get()->CreateShaderResourceView(texture2d.Get(), &shader_resource_view_desc, shader_resource_view); VERIFY;
 
 			return hr;
+		}
+
+		HRESULT save_to_file(ID3D11Resource* resource, string filepath) {
+			HRESULT hr = DirectX::SaveWICTextureToFile(device::context(), resource, GUID_ContainerFormatPng, filepath, nullptr, nullptr, true); VERIFY;
+			return hr;
+		}
+
+		HRESULT save_to_file(ID3D11ShaderResourceView* shader_resource_view, string filepath) {
+			ComPtr<ID3D11Resource> resource;
+			shader_resource_view->GetResource(resource.GetAddressOf());
+			return save_to_file(resource.Get(), filepath);
 		}
 
 		void release_all() { resources.clear(); }

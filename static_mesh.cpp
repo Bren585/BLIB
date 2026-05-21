@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "static_mesh.h"
 #include "geometric_primitive.h"
+#include "constant_buffer_indices.h"
 #include <fstream>
 
 using namespace BLIB;
@@ -239,7 +240,7 @@ void static_mesh::render(const float4x4& world, const color& material_color) con
 
 		constants data{ world, material_color };
 		device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
-		device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
+		device::context()->VSSetConstantBuffers(FULL_VS_CB, 1, constant_buffer.GetAddressOf());
 
 		for (const subset& subset : subsets) {
 			if (material.name == subset.material_name) {

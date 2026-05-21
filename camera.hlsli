@@ -1,4 +1,5 @@
-cbuffer CONSTANT_BUFFER : register(b1)
+#include "constant_buffer_indices.h"
+cbuffer CONSTANT_BUFFER : register(CAMERA_CB)
 {
     //row_major float4x4  view;
     row_major float4x4  view_projection;

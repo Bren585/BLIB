@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "mesh.h"
+#include "constant_buffer_indices.h"
 
 namespace BLIB {
 
@@ -9,10 +10,10 @@ namespace BLIB {
 		D3D11_BUFFER_DESC buffer_desc{};
 		D3D11_SUBRESOURCE_DATA subresource_data{};
 
-		buffer_desc.ByteWidth = static_cast<UINT>(sizeof(vertex) * vertices.size());
-		buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+		buffer_desc.ByteWidth = static_cast<uint>(sizeof(vertex) * vertices.size());
+		buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
 		buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		buffer_desc.CPUAccessFlags = 0;
+		buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		buffer_desc.MiscFlags = 0;
 		buffer_desc.StructureByteStride = 0;
 
@@ -22,43 +23,71 @@ namespace BLIB {
 
 		hr = device::get()->CreateBuffer(&buffer_desc, &subresource_data, vertex_buffer.ReleaseAndGetAddressOf()); VERIFY;
 
-		buffer_desc.ByteWidth = static_cast<UINT>(sizeof(uint32_t) * indices.size());
+		buffer_desc.ByteWidth = static_cast<uint>(sizeof(uint32_t) * indices.size());
+		buffer_desc.Usage = D3D11_USAGE_DEFAULT;
 		buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		buffer_desc.CPUAccessFlags = 0;
 		subresource_data.pSysMem = indices.data();
 
 		hr = device::get()->CreateBuffer(&buffer_desc, &subresource_data, index_buffer.ReleaseAndGetAddressOf()); VERIFY;
 
-		//if (bind_pose.bones.size() > 0) {
-		//	buffer_desc.ByteWidth = static_cast<UINT>(bind_pose.bones.size() * sizeof(float4x4));
-		//	buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-		//	buffer_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		//	buffer_desc.CPUAccessFlags = 0;
-		//	buffer_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-		//	buffer_desc.StructureByteStride = sizeof(float4x4);
-		//
-		//	hr = device::get()->CreateBuffer(&buffer_desc, nullptr, bone_buffer.GetAddressOf()); VERIFY;
-		//
-		//	D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-		//	srv_desc.Format = DXGI_FORMAT_UNKNOWN;
-		//	srv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-		//	srv_desc.Buffer.FirstElement = 0;
-		//	srv_desc.Buffer.NumElements = static_cast<UINT>(bind_pose.bones.size());
-		//
-		//	hr = device::get()->CreateShaderResourceView(bone_buffer.Get(), &srv_desc, bone_srv.GetAddressOf()); VERIFY;
+#ifdef SKIN_GPU
+
+		D3D11_BUFFER_DESC constant_buffer_desc{};
+		constant_buffer_desc.ByteWidth = static_cast<uint>(sizeof(float4x4) * (bind_pose.bones.size() == 0 ? 1 : bind_pose.bones.size()));
+		constant_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+		constant_buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		constant_buffer_desc.CPUAccessFlags = 0;
+		constant_buffer_desc.MiscFlags = 0;
+		constant_buffer_desc.StructureByteStride = 0;
+		hr = device::get()->CreateBuffer(&constant_buffer_desc, nullptr, bone_buffer.ReleaseAndGetAddressOf()); VERIFY;
+
+		//struct bone_inf { float weights[4]; uint indices[4]; };
+		//std::vector<bone_inf> bone_data;
+		//bone_data.resize(vertices.size());
+		//for (uint i = 0; i < vertices.size(); i++) {
+		//	bone_inf& inf = bone_data[i];
+		//	const vertex& v = vertices[i];
+		//	for (int j = 0; j < MAX_BONE_INF; j++) {
+		//		inf.weights[j] = v.bone_weights[j];
+		//		inf.indices[j] = v.bone_indices[j];
+		//	}
 		//}
+		//
+		//D3D11_BUFFER_DESC structured_buffer_desc{};
+		//structured_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+		//structured_buffer_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		//structured_buffer_desc.CPUAccessFlags = 0;
+		//structured_buffer_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		//structured_buffer_desc.StructureByteStride = sizeof(bone_inf);
+		//structured_buffer_desc.ByteWidth = static_cast<uint>(sizeof(bone_inf) * vertices.size());
+		//subresource_data.pSysMem = bone_data.data();
+		//
+		//hr = device::get()->CreateBuffer(&structured_buffer_desc, &subresource_data, bone_inf_buffer.GetAddressOf()); VERIFY;
+		//
+		//D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc{};
+		//srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+		//srv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+		//srv_desc.Buffer.FirstElement = 0;
+		//srv_desc.Buffer.NumElements = static_cast<uint>(vertices.size());
+		//hr = device::get()->CreateShaderResourceView(bone_inf_buffer.Get(), &srv_desc, bone_inf_srv.GetAddressOf()); VERIFY;
+
+#endif
 	}
 
 	void mesh::update_buffers(const std::vector<vertex>& vertices) const {
+		RENDER_LOCK;
 		D3D11_MAPPED_SUBRESOURCE mapped_subresource{};
 		HRESULT hr = device::context()->Map(vertex_buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource); VERIFY;
-		mapped_subresource.pData = (void*)vertices.data();
+		memcpy(mapped_subresource.pData, vertices.data(), vertices.size() * sizeof(vertex));
 		device::context()->Unmap(vertex_buffer.Get(), 0);
 	}
 
-	//void mesh::update_bone_buffer(std::vector<float4x4>& bone_transforms, bool dump) const {
-	//	assert(bone_transforms.size() == bind_pose.bones.size());
-	//	device::context()->UpdateSubresource(bone_buffer.Get(), 0, 0, bone_transforms.data(), 0, 0);
-	//}
+	void mesh::update_bone_buffer(std::vector<float4x4>& bone_transforms) const {
+		assert(bone_transforms.size() == bind_pose.bones.size());
+		RENDER_LOCK;
+		device::context()->UpdateSubresource(bone_buffer.Get(), 0, 0, bone_transforms.data(), 0, 0);
+	}
 
 	void mesh::unwrap_triangles() const {
 		HRESULT hr{ S_OK };

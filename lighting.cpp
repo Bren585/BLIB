@@ -2,6 +2,7 @@
 #include "lighting.h"
 #include "scene.h"
 #include "camera.h"
+#include "constant_buffer_indices.h"
 
 namespace BLIB {
 
@@ -183,7 +184,7 @@ namespace BLIB {
 
 			/* Structured Buffer */ {
 				D3D11_BUFFER_DESC desc{};
-				desc.ByteWidth = static_cast<uint>(MAX_LIGHTS * sizeof(packed_light));
+				desc.ByteWidth = static_cast<uint>(MAX_LIGHT_COUNT * sizeof(packed_light));
 				desc.Usage = D3D11_USAGE_DEFAULT;
 				desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 				desc.CPUAccessFlags = 0;
@@ -197,7 +198,7 @@ namespace BLIB {
 				desc.Format = DXGI_FORMAT_UNKNOWN;
 				desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
 				desc.Buffer.FirstElement = 0;
-				desc.Buffer.NumElements = MAX_LIGHTS;
+				desc.Buffer.NumElements = MAX_LIGHT_COUNT;
 				hr = device::get()->CreateShaderResourceView(structured_buffer.Get(), &desc, structured_buffer_SRV.GetAddressOf()); VERIFY;
 			}
 
@@ -205,11 +206,26 @@ namespace BLIB {
 			shadow_viewport.MinDepth = 0.0f;
 			shadow_viewport.MaxDepth = 1.0f;
 
+
+#ifdef SKIN_CPU
 			D3D11_INPUT_ELEMENT_DESC input_element_desc[1] = {
 				{"POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 			};
 
 			shader::load_vs("shadow", input_element_desc, 1);
+#else // SKIN_GPU
+			D3D11_INPUT_ELEMENT_DESC input_element_desc[6] = {
+				{"POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{"NORMAL",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{"TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{"TANGENT",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{"TEXCOORD",	1, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{"TEXCOORD",	2, DXGI_FORMAT_R32G32B32A32_UINT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			};
+
+			shader::load_vs("skinned_shadow", input_element_desc, 6);
+#endif
+
 			shader::load_ps("shadow");
 
 		}
@@ -229,12 +245,16 @@ namespace BLIB {
 			// No Shadow
 			device::context()->ClearDepthStencilView(shadow_stencil[shadow_count++].Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
+#ifdef SKIN_CPU
 			render_settings rs{ vertex_shader("shadow"), pixel_shader("shadow"), geometry_shader(NULL_SHADER) };
+#else // SKIN_GPU
+			render_settings rs{ vertex_shader("skinned_shadow"), pixel_shader("shadow"), geometry_shader(NULL_SHADER) };
+#endif
 
 			/* Skylight */ {
 				annotate("skylight shadows");
 				device::context()->UpdateSubresource(shadow_constant_buffer.Get(), 0, 0, &constant_buffer_data.skylight_view_proj, 0, 0);
-				device::context()->VSSetConstantBuffers(1, 1, shadow_constant_buffer.GetAddressOf());
+				device::context()->VSSetConstantBuffers(SHADOW_CB, 1, shadow_constant_buffer.GetAddressOf());
 				auto dsv = shadow_stencil[shadow_count++].Get();
 				device::context()->OMSetRenderTargets(0, nullptr, dsv);
 				device::context()->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.0f, 0);
@@ -249,7 +269,7 @@ namespace BLIB {
 				if (!light.casts_shadows()) continue;
 				packed_lights.at(i).shadow_index = shadow_count;
 				device::context()->UpdateSubresource(shadow_constant_buffer.Get(), 0, 0, &light.get_view_proj(), 0, 0);
-				device::context()->VSSetConstantBuffers(1, 1, shadow_constant_buffer.GetAddressOf());
+				device::context()->VSSetConstantBuffers(SHADOW_CB, 1, shadow_constant_buffer.GetAddressOf());
 				auto dsv = shadow_stencil[shadow_count].Get();
 				device::context()->OMSetRenderTargets(0, nullptr, dsv);
 				device::context()->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.0f, 0);
@@ -269,14 +289,14 @@ namespace BLIB {
 		void pack_lights(const std::vector<light>* lights = nullptr) {
 			packed_lights.clear();
 			if (!lights) { packed_lights.push_back(packed_light()); return; }
-			for (auto& light : *lights) { packed_lights.push_back(light); }
+			for (auto& light : *lights) { if (light.is_active()) packed_lights.push_back(light); }
 			constant_buffer_data.light_count = static_cast<int>(packed_lights.size());
 			if (packed_lights.empty()) { packed_lights.push_back(packed_light()); }
 		}
 
 		void update_buffers() {
 			device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &constant_buffer_data, 0, 0);
-			device::context()->PSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
+			device::context()->PSSetConstantBuffers(LIGHTING_CB, 1, constant_buffer.GetAddressOf());
 
 			_ASSERT_EXPR(constant_buffer_data.light_count < MAX_LIGHT_COUNT, "Too Many Lights");
 
@@ -320,6 +340,16 @@ namespace BLIB {
 			//update_buffers();
 
 			init_shadow_map_array();
+		}
+
+		void uninit() {
+			constant_buffer.Reset();
+			structured_buffer.Reset();
+			structured_buffer_SRV.Reset();
+			shadow_constant_buffer.Reset();
+			shadow_map_array.Reset();
+			shadow_SRV.Reset();
+			shadow_stencil.clear();
 		}
 
 	}

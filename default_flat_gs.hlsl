@@ -20,13 +20,12 @@ void main(
 {
     PS_IN pins[4];
     
-    bool	y_invert	= gin[0].y_invert != 0;
-    float	y_invert_c	= 1 - float(y_invert) * 2;
-    float2  viewport    = gin[0].viewport;
+    bool	y_invert_b	= y_invert != 0;
+    float	y_invert_c	= 1 - float(y_invert_b) * 2;
     float2	position	= gin[0].position;
-    position.y = lerp(position.y, (viewport.y - position.y), y_invert);
+    position.y = lerp(position.y, (viewport.y - position.y), y_invert_b);
 	
-    float2 size = gin[0].size;
+    float2 size = tile_size * gin[0].scale;
     size.y *= y_invert_c;
 	
     float xflip = step(size.x, 0);
@@ -63,11 +62,9 @@ void main(
         pins[i].position = float4(corner[i], 0, 1);
     }
 	
-    yflip = lerp(yflip, 1 - yflip, y_invert);
+    yflip = lerp(yflip, 1 - yflip, y_invert_b);
     
     float2 tile_index   = gin[0].tile_index;
-    float2 tile_size    = gin[0].tile_size;
-    float2 texture_size = gin[0].texture_size;
     float2 uv_transform = tile_size / texture_size;
     
     float u[2] = { 0, 1 };

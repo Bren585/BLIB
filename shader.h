@@ -44,6 +44,8 @@ namespace BLIB {
 		void load_gs(const string& gs_name);
 
 		void set_gs(const string& gs_name);
+
+		void release_all();
 	}
 
 }

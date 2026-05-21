@@ -24,7 +24,7 @@ namespace BLIB {
 			environment_lights	scene_lights;
 
 			virtual void _on_resize() {} // engine use only
-			void on_load() override { sleep(); }
+			void on_load() override { force_sleep(); }
 
 		protected:
 			virtual void draw(render_settings = {}) const	{}
@@ -83,7 +83,7 @@ namespace BLIB {
 
 			Microsoft::WRL::ComPtr<ID3D11Buffer> point_buffer;
 			std::unique_ptr<render_target::view> geometry_buffer[MAX_VIEWS];
-			void _on_resize() override { for (int i = 0; i < geometry_layer_count; i++) geometry_buffer[i]->resize(get_size()); }
+			void _on_resize() override { for (int i = 0; i < geometry_layer_count; i++) geometry_buffer[i]->resize(get_view_size()); }
 
 			void _render(const camera* cam) const override;
 

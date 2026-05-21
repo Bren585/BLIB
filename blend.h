@@ -27,5 +27,7 @@ namespace BLIB {
 		ID3D11BlendState* get(state state);
 
 		void set(state state = DEFAULT);
+
+		void release_all();
 	}
 }

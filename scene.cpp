@@ -21,7 +21,7 @@ namespace BLIB {
 			canvas::focus();
 			draw();
 			canvas::unfocus();
-			canvas::render_to_main();
+			object::render();
 		}
 	}
 
@@ -44,7 +44,13 @@ namespace BLIB {
 
 			(render_settings{ pixel_shader("deferred_lighting"), stencil::DEPTH_NONE } & sprite::default_rs()).set();
 
-			update_point_buffer(point_buffer.Get());
+			Microsoft::WRL::ComPtr<ID3D11Buffer> point_buffer, constant_buffer;
+
+			make_point_buffer(point_buffer.GetAddressOf());
+			update_point_buffer(point_buffer.Get(), float2{ 0 }, float2{ 1 }, C_BL, 0, float2{ 0 });
+
+			make_constant_buffer(constant_buffer.GetAddressOf());
+			update_constant_buffer(constant_buffer.GetAddressOf(), get_view_size(), WHITE, get_view_size());
 
 			draw_points(point_buffer.GetAddressOf());
 		}
@@ -65,7 +71,7 @@ namespace BLIB {
 			lighting_pass();
 			transparent_pass(cam);
 			canvas::unfocus();
-			canvas::render_to_main();
+			object::render();
 		}
 	}
 

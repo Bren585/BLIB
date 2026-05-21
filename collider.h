@@ -9,12 +9,12 @@
 #define NO_COLLISION_2 {-1, {0, 0}}
 #define NO_COLLISION_3 {-1, {0, 0, 0}}
 
-#define NO_HIT FLT_MAX
-#define ANY_HIT 1.0f
-#define IS_HIT(x) x != NO_HIT
+#define NO_HIT		FLT_MAX
+#define ANY_HIT		1.0f
+#define IS_HIT(x)	x != NO_HIT
 
-#define FRICTION 0.1f
-#define RESTITUTION 0.2f
+#define DEFAULT_FRICTION	0.1f
+#define DEFAULT_RESTITUTION 0.2f
 
 namespace BLIB::flat { class collider; struct collision; class object; class entity; }
 namespace BLIB::full { class collider; struct collision; class object; class entity; }
@@ -58,8 +58,8 @@ namespace BLIB::collision {
 	void move(full::entity* obj, full::object* mover, full::collision penetration, bool both = false);
 	void move(full::entity* obj, full::entity* mover, full::collision penetration, bool both = false);
 
-	void land(flat::entity* obj, full::collision penetration);
-	void land(full::entity* obj, full::collision penetration);
+	void land(flat::entity* obj, const flat::collision& penetration);
+	void land(full::entity* obj, const full::collision& penetration);
 
 	bool ray_pick(const flat::object* obj, const float2& ray_origin, const float2& ray_direction, float2* out_position = nullptr, float2* out_normal = nullptr);
 	bool ray_pick(const flat::entity* obj, const float2& ray_origin, const float2& ray_direction, float2* out_position = nullptr, float2* out_normal = nullptr);
@@ -76,11 +76,13 @@ namespace BLIB::generic {
 	class collider : public hierarchy<collider> {
 	private:
 		collider_type type = none;
+		float restitution	= DEFAULT_RESTITUTION;
+		float friction		= DEFAULT_FRICTION;
 
 	protected:
-		virtual collider* clone_impl(collider* parent) = 0;
+		virtual collider* clone_impl(collider* parent) const = 0;
 
-		void weak_clone(collider* parent) {
+		void weak_clone(collider* parent) const {
 			collider* out = clone_impl(parent);
 			for (auto& child : children) { child->weak_clone(out); }
 		}
@@ -89,11 +91,22 @@ namespace BLIB::generic {
 
 	public:
 		collider(collider* parent) : hierarchy(parent) {}
+		collider(const collider& o, collider* new_parent) : hierarchy(new_parent), type(o.type), restitution(o.restitution), friction(o.friction) {}
 
-		void			set_type(collider_type t) { type = t; }
-		collider_type	get_type() const { return type; }
+		void	set_type		(collider_type t)	{ type			= t; }
+		void	set_restitution	(float v)			{ restitution	= v; }
+		void	set_friction	(float v)			{ friction		= v; }
 
-		std::unique_ptr<collider> clone() { 
+		collider_type	get_type		() const { return type;			}
+		float			get_restitution	() const { return restitution;	}
+		float			get_friction	() const { return friction;		}
+
+#ifdef _DEBUG
+		float&			imgui_get_restitution	() { return restitution;	}
+		float&			imgui_get_friction		() { return friction;		}
+#endif
+
+		std::unique_ptr<collider> clone() const { 
 			auto out = std::unique_ptr<collider>(clone_impl(nullptr)); 
 			for (auto& child : children) { child->weak_clone(out.get()); }
 			return out;
@@ -115,6 +128,8 @@ namespace BLIB::flat {
 	struct collision {
 		float depth;
 		float2 normal;
+		float restitution	= 0;
+		float friction		= 0;
 
 		collision(float d, float2 n) : depth(d), normal(n) {}
 		collision(bool success) : depth(-1) { assert(!success); }
@@ -136,12 +151,13 @@ namespace BLIB::flat {
 		float2 parent_scale;
 		float  parent_angle = 0;
 
-		virtual collider* clone_impl(generic::collider* parent) override = 0;
+		virtual collider* clone_impl(generic::collider* parent) const override = 0;
 		
 		virtual float _ray_pick(float2 ray_origin, float2 ray_direction, float2* out_position = nullptr, float2* out_normal = nullptr) const = 0;
 
 	public:
 		collider(collider* parent) : generic::collider(parent) {}
+		collider(const collider& o, collider* new_parent) : generic::collider(o, new_parent), offset(o.offset), scale(o.scale) {}
 
 		virtual void sync(float2 p, float2 s, float a) { parent_position = p + offset.rotate(a); parent_scale = s; parent_angle = a; for (auto& child : children) { static_cast<collider*>(child.get())->sync(parent_position, parent_scale, parent_angle); } }
 
@@ -167,7 +183,7 @@ namespace BLIB::flat {
 	private:
 		float2 size;
 
-		aligned_rect_collider* clone_impl(generic::collider* parent) override { return new aligned_rect_collider(static_cast<collider*>(parent), size); }
+		aligned_rect_collider* clone_impl(generic::collider* parent) const override { return new aligned_rect_collider(*this, static_cast<collider*>(parent)); }
 
 		float _ray_pick(float2 ray_origin, float2 ray_direction, float2* out_position = nullptr, float2* out_normal = nullptr) const override;
 		
@@ -175,6 +191,7 @@ namespace BLIB::flat {
 	
 	public:
 		aligned_rect_collider(collider* parent, float2 size) : collider(parent), size(size) {}
+		aligned_rect_collider(const aligned_rect_collider& o, collider* new_parent) : collider(o, new_parent), size(o.size) {}
 
 		float2 get_size() const { return size * get_scl(); }
 
@@ -191,7 +208,7 @@ namespace BLIB::flat {
 		float2 size;
 		float angle;
 
-		rect_collider* clone_impl(generic::collider* parent) override { return new rect_collider(static_cast<collider*>(parent), size, angle); }
+		rect_collider* clone_impl(generic::collider* parent) const override { return new rect_collider(*this, static_cast<collider*>(parent)); }
 
 		float _ray_pick(float2 ray_origin, float2 ray_direction, float2* out_position = nullptr, float2* out_normal = nullptr) const override;
 		
@@ -199,6 +216,7 @@ namespace BLIB::flat {
 
 	public:
 		rect_collider(collider* parent, float2 size, float angle) : collider(parent), size(size), angle(angle) {}
+		rect_collider(const rect_collider& o, collider* new_parent) : collider(o, new_parent), size(o.size), angle(o.angle) {}
 
 		float2 get_size() const { return size * get_scl(); }
 		float  get_ang() const { return angle + parent_angle; }
@@ -215,7 +233,7 @@ namespace BLIB::flat {
 	private:
 		float r;
 
-		circle_collider* clone_impl(generic::collider* parent) override { return new circle_collider(static_cast<collider*>(parent), r); }
+		circle_collider* clone_impl(generic::collider* parent) const override { return new circle_collider(*this, static_cast<collider*>(parent)); }
 
 		float _ray_pick(float2 ray_origin, float2 ray_direction, float2* out_position = nullptr, float2* out_normal = nullptr) const override;
 
@@ -223,6 +241,7 @@ namespace BLIB::flat {
 
 	public:
 		circle_collider(collider* parent, float r) : collider(parent), r(r) {}
+		circle_collider(const circle_collider& o, collider* new_parent) : collider(o, new_parent), r(o.r) {}
 
 		float get_r() const { return r * get_scl().x; }
 
@@ -243,6 +262,8 @@ namespace BLIB::full {
 	struct collision {
 		float depth;
 		float3 normal;
+		float restitution	= 0;
+		float friction		= 0;
 
 		collision(float d, float3 n) : depth(d), normal(n) {}
 		collision(bool success) : depth(-1) { assert(!success); }
@@ -267,15 +288,25 @@ namespace BLIB::full {
 
 		mutable std::unique_ptr<model> debug_model = nullptr;
 
-		virtual collider* clone_impl(generic::collider* parent) override = 0;
+		virtual collider* clone_impl(generic::collider* parent) const override = 0;
 
 		virtual float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const = 0;
 
 	public:
 		collider(collider* parent = nullptr) : generic::collider(parent) {}
+		collider(const collider& o, collider* new_parent) : generic::collider(o, new_parent), offset(o.offset), scale(o.scale), trans(o.trans) {}
 
-		virtual void sync(const transform& t) { trans = t; trans.set_pvt(float3{0}); trans.add_pos(trans.get_qtn().rotate(offset)); for (auto& child : children) { static_cast<collider*>(child.get())->sync(trans); } }
+		virtual void sync(const transform& t) { 
+			float3 pivot = trans.get_pvt();
+			trans = t; 
+			trans.set_pvt(pivot); 
+			float3 rotated_offset = trans.get_qtn().rotate(offset);
+			trans.add_pos(rotated_offset); 
+			for (auto& child : children) { static_cast<collider*>(child.get())->sync(trans); } 
+		}
 		const transform& get_trans() const { return trans; }
+
+		void set_pvt(float3 p) { trans.set_pvt(p); }
 
 		void set_off(float3 o) { offset = o; }
 		void add_off(float3 o) { offset += o; }
@@ -304,7 +335,7 @@ namespace BLIB::full {
 	private:
 		float3 size;
 
-		aabb_collider* clone_impl(generic::collider* parent) override { return new aabb_collider(static_cast<collider*>(parent), size); }
+		aabb_collider* clone_impl(generic::collider* parent) const override { return new aabb_collider(*this, static_cast<collider*>(parent)); }
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
@@ -312,6 +343,7 @@ namespace BLIB::full {
 
 	public:
 		aabb_collider(collider* parent, float3 size) : collider(parent), size(size) {}
+		aabb_collider(const aabb_collider& o, collider* new_parent) : collider(o, new_parent), size(o.size) {}
 
 		float3 get_size() const { return size * get_scl(); }
 
@@ -333,7 +365,7 @@ namespace BLIB::full {
 		float3 size;
 		quaternion quat;
 
-		box_collider* clone_impl(generic::collider* parent) override { return new box_collider(static_cast<collider*>(parent), size, quat); }
+		box_collider* clone_impl(generic::collider* parent) const override { return new box_collider(*this, static_cast<collider*>(parent)); }
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
@@ -341,6 +373,7 @@ namespace BLIB::full {
 
 	public:
 		box_collider(collider* parent, float3 size, quaternion quat) : collider(parent), size(size), quat(quat) {}
+		box_collider(const box_collider& o, collider* new_parent) : collider(o, new_parent), size(o.size), quat(o.quat) {}
 
 		float3		get_size()			const { return size * get_scl(); }
 		quaternion	get_quaternion()	const { return quat * trans.get_qtn(); }
@@ -362,7 +395,7 @@ namespace BLIB::full {
 	private:
 		float r;
 
-		sphere_collider* clone_impl(generic::collider* parent) override { return new sphere_collider(static_cast<collider*>(parent), r); }
+		sphere_collider* clone_impl(generic::collider* parent) const override { return new sphere_collider(*this, static_cast<collider*>(parent)); }
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
@@ -370,6 +403,7 @@ namespace BLIB::full {
 	
 	public:
 		sphere_collider(collider* parent, float r) : collider(parent), r(r) {}
+		sphere_collider(const sphere_collider& o, collider* new_parent) : collider(o, new_parent), r(o.r) {}
 
 		float get_r() const { return r * get_scl().x; }
 
@@ -391,7 +425,7 @@ namespace BLIB::full {
 		float r;
 		float h;
 
-		cylinder_collider* clone_impl(generic::collider* parent) override { return new cylinder_collider(static_cast<collider*>(parent), r, h); }
+		cylinder_collider* clone_impl(generic::collider* parent) const override { return new cylinder_collider(*this, static_cast<collider*>(parent)); }
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
@@ -399,6 +433,7 @@ namespace BLIB::full {
 	
 	public:
 		cylinder_collider(collider* parent, float r, float h) : collider(parent), r(r), h(h) {}
+		cylinder_collider(const cylinder_collider& o, collider* new_parent) : collider(o, new_parent), r(o.r), h(o.h) {}
 
 		float get_r() const { return r * get_scl().x; }
 		float get_h() const { return h * get_scl().y; }
@@ -421,7 +456,7 @@ namespace BLIB::full {
 		float r;
 		float h;
 
-		capsule_collider* clone_impl(generic::collider* parent) override { return new capsule_collider(static_cast<collider*>(parent), r, h); }
+		capsule_collider* clone_impl(generic::collider* parent) const override { return new capsule_collider(*this, static_cast<collider*>(parent)); }
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
@@ -429,6 +464,7 @@ namespace BLIB::full {
 
 	public:
 		capsule_collider(collider* parent, float r, float h) : collider(parent), r(r), h(h) {}
+		capsule_collider(const capsule_collider& o, collider* new_parent) : collider(o, new_parent), r(o.r), h(o.h) {}
 
 		float get_r() const { return r * get_scl().x; }
 		float get_h() const { return h * get_scl().y; }
@@ -450,7 +486,7 @@ namespace BLIB::full {
 	private:
 		const model* model_ptr;
 
-		mesh_collider* clone_impl(generic::collider* parent) override { return new mesh_collider(static_cast<collider*>(parent), model_ptr); }
+		mesh_collider* clone_impl(generic::collider* parent) const override { return new mesh_collider(*this, static_cast<collider*>(parent)); }
 	
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
@@ -458,6 +494,7 @@ namespace BLIB::full {
 
 	public:
 		mesh_collider(collider* parent, const model* ptr) : collider(parent), model_ptr(ptr) {}
+		mesh_collider(const mesh_collider& o, collider* new_parent) : collider(o, new_parent), model_ptr(o.model_ptr) {}
 
 		const model* get_mesh() const { return model_ptr; }
 
@@ -478,7 +515,7 @@ namespace BLIB::full {
 	private:
 		float3 normal;
 
-		plane_collider* clone_impl(generic::collider* parent) override { return new plane_collider(static_cast<collider*>(parent), normal); }
+		plane_collider* clone_impl(generic::collider* parent) const override { return new plane_collider(*this, static_cast<collider*>(parent)); }
 
 		float _ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const override;
 
@@ -486,6 +523,7 @@ namespace BLIB::full {
 
 	public:
 		plane_collider(collider* parent, float3 n) : collider(parent), normal(n) {}
+		plane_collider(const plane_collider& o, collider* new_parent) : collider(o, new_parent), normal(o.normal) {}
 
 		float3 get_normal() const { return trans.get_qtn().rotate(normal); }
 

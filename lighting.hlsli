@@ -1,8 +1,8 @@
 #include "math_constants.hlsli"
-#define MAX_LIGHT_COUNT 16
-#define SKYLIGHT_SHADOW_INDEX 1
+#include "lighting_constants.h"
 
-cbuffer CONSTANT_LIGHTING : register(b0)
+#include "constant_buffer_indices.h"
+cbuffer CONSTANT_LIGHTING : register(LIGHTING_CB)
 {
     int                 light_count;
     

@@ -21,16 +21,19 @@ void canvas::resize(float2 size) {
 
 void canvas::clear() const { RENDER_LOCK; view.clear(background); }
 
-void canvas::draw(renderable* r, render_settings rs) const {
+void canvas::draw(const renderable* r, render_settings rs) const {
 	if (!r) return;
 	RENDER_LOCK;
-	focus();
+	bool acquired = focus();
 	r->render(rs);
+	if (acquired) unfocus();
 }
 
-float canvas::type(string s, float2 pos, float2 size, font_name font, color color, float2 align) const {
-	focus();
-	return text::out(s, pos, size, font, color, align);
+float canvas::type(string s, float2 pos, float2 scale, string font, color color, float2 align) const {
+	bool acquired = focus();
+	float off = text::out(s, pos, scale, font, color, align);
+	if (acquired) unfocus();
+	return off;
 }
 
 void canvas::snapshot_to_sprite(sprite* target) const {

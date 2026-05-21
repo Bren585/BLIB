@@ -15,6 +15,7 @@
 
 #define PI			DirectX::XM_PI
 #define PI2			DirectX::XM_2PI
+#define PID2		DirectX::XM_PIDIV2
 #define EPS			1e-6f
 #define ZERO_APPROX	0.0001f
 #define ONE_APPROX	0.9999f

@@ -8,24 +8,29 @@
 #define SPRITE_VS DEFAULT_FLAT
 #define SPRITE_GS DEFAULT_FLAT
 
+#define VARIABLE_VS "variable_flat"
+#define VARIABLE_GS "variable_flat"
+
 namespace BLIB {
 
 	class sprite {
 	public:
 		struct vertex {
 			float2	position;
-			float2	size;
+			float2	scale;
 			float2	pivot;
 			float	rotation;
-			float2	viewport;
-			uint	y_invert;
-			float2	tile_size;
-			float2	tile_index;
-			float2  texture_size;
+			float2	tile_index; // or uv_position
+			float2	tile_size;	// or uv_size, used by variable_flat only
 		};
 
 		struct constants {
-			color color;
+			color	color;
+			float2  tile_size;	// unused by variable_flat
+			float2  texture_size;
+			float2  viewport;
+			uint    y_invert;
+			float   dummy;
 		};
 
 		enum flags {
@@ -35,6 +40,7 @@ namespace BLIB {
 			make_cbuffer	= 1 << 2,
 			load_texture	= 1 << 3,
 			load_shaders	= 1 << 4,
+			variable		= 1 << 5,
 
 			make_buffers	= make_vbuffer | make_cbuffer,
 
@@ -42,7 +48,7 @@ namespace BLIB {
 			dummy_flags		= load_shaders	| make_buffers,
 			canvas_flags	= load_shaders	| make_buffers,
 			batch_flags		= load_shaders	| load_texture		| make_cbuffer,
-			font_flags		= batch_flags	| full_filename,
+			font_flags		= batch_flags	| full_filename		| variable,
 			default_flags	= load_shaders	| make_buffers		| load_texture
 		};
 
@@ -60,8 +66,8 @@ namespace BLIB {
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	shader_resource_view	= nullptr;
 		D3D11_TEXTURE2D_DESC								texture2d_desc{};
 
-		void update_vertex_buffer(float2 pos, float2 scale, float2 pivot, float rotation, float2 tile_size, float2 tile_index);
-		void update_constant_buffer(color color);
+		void update_vertex_buffer(float2 pos, float2 scale, float2 pivot, float rotation, float2 tile_index);
+		void update_constant_buffer(color color, float2 tile_size);
 
 	public:
 		sprite(flags flags, const string& filename = "");
@@ -71,8 +77,8 @@ namespace BLIB {
 		sprite(sprite&&) = default;
 		~sprite() {}
 
-		static void load_shader(string vs = SPRITE_VS);
-		void		load_file(const string& filename, bool full_filepath);
+		virtual void	load_shader(string vs);
+		void			load_file(const string& filename, bool full_filepath);
 
 		sprite* clone() const;
 
@@ -101,7 +107,11 @@ namespace BLIB {
 
 	void make_point_buffer(ID3D11Buffer** out);
 
-	void update_point_buffer(ID3D11Buffer* point_buffer, float2 pos = sprite::get_viewport() / 2.0f, float2 scale = sprite::get_viewport(), float2 pivot = C_CC, float rotation = 0, float2 tile_size = float2{ 1 }, float2 tile_index = float2{ 0 }, float2 texture_size = float2{ 1 });
+	void update_point_buffer(ID3D11Buffer* point_buffer, float2 pos = sprite::get_viewport() / 2.0f, float2 scale = float2{1}, float2 pivot = C_CC, float rotation = 0, float2 tile_index = float2{0});
+
+	void make_constant_buffer(ID3D11Buffer** out);
+
+	void update_constant_buffer(ID3D11Buffer** constant_buffer_addr, float2 texture_size, color c = WHITE, float2 tile_size = sprite::get_viewport());
 
 	void draw_points(ID3D11Buffer* const* vertex_buffer_adr, uint count = 1);
 

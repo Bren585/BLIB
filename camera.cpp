@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "camera.h"
+#include "constant_buffer_indices.h"
 
 namespace BLIB {
 	camera::camera(float2 clip_range, float3 eye, float3 focus, float3 up)
@@ -26,9 +27,9 @@ namespace BLIB {
 
 		RENDER_LOCK;
 		device::context()->UpdateSubresource(buffer.Get(), 0, 0, &data, 0, 0);
-		device::context()->VSSetConstantBuffers(1, 1, buffer.GetAddressOf());
-		device::context()->PSSetConstantBuffers(1, 1, buffer.GetAddressOf());
-		device::context()->GSSetConstantBuffers(1, 1, buffer.GetAddressOf());
+		device::context()->VSSetConstantBuffers(CAMERA_CB, 1, buffer.GetAddressOf());
+		device::context()->PSSetConstantBuffers(CAMERA_CB, 1, buffer.GetAddressOf());
+		device::context()->GSSetConstantBuffers(CAMERA_CB, 1, buffer.GetAddressOf());
 	}
 
 	void perspective_camera::_update() const {

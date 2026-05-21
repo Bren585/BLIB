@@ -79,26 +79,29 @@ public:
 	}
 };
 
-inline float3x3 face_to(const float3& F) {
-	float3 R, U, H = { 0, 1, 0 }; // U Hint
-	if (fabsf(dot(H, F)) > ONE_APPROX) { H = { 1, 0, 0 }; } // R Hint
-	R = (H % F).norm();
-	U = (F % R).norm();
-	return { R, U, -F };
-}
-
-inline float3x3 head_to(const float3& U) {
-	float3 R, F, H = { 0, 0, -1 }; // F Hint
-	if (fabsf(dot(H, U)) > ONE_APPROX) { H = { 1, 0, 0 }; } // R Hint 
-	R = (H % U).norm();
-	F = (U % R).norm();
-	return { R, U, -F };
-}
-
-inline float3x3 side_to(const float3& R) {
-	float3 F, U, H = { 0, 1, 0 }; // U Hint
-	if (fabsf(dot(H, R)) > ONE_APPROX) { H = { 0, 0, -1 }; } // F Hint
-	F = (H % R).norm();
-	U = (R % F).norm();
-	return { R, U, -F };
-}
+//inline float3x3 face_to(const float3& f) {
+//	const float3 F = f.norm();
+//	float3 R, U, H = { 0, 1, 0 }; // U Hint
+//	if (fabsf(dot(H, F)) > ONE_APPROX) { H = { 1, 0, 0 }; } // R Hint
+//	R = (H % F).norm();
+//	U = (F % R).norm();
+//	return { R, U, -F };
+//}
+//
+//inline float3x3 head_to(const float3& u) {
+//	const float3 U = u.norm();
+//	float3 R, F, H = { 0, 0, -1 }; // F Hint
+//	if (fabsf(dot(H, U)) > ONE_APPROX) { H = { 1, 0, 0 }; } // R Hint 
+//	R = (H % U).norm();
+//	F = (U % R).norm();
+//	return { R, U, -F };
+//}
+//
+//inline float3x3 side_to(const float3& r) {
+//	const float3 R = r.norm();
+//	float3 F, U, H = { 0, 1, 0 }; // U Hint
+//	if (fabsf(dot(H, R)) > ONE_APPROX) { H = { 0, 0, -1 }; } // F Hint
+//	F = (H % R).norm();
+//	U = (R % F).norm();
+//	return { R, U, -F };
+//}

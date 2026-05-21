@@ -5,11 +5,8 @@
 #include <wrl.h>
 #include "lights.h"
 
- // Make sure contants (esp max counts) match shaders (see: lighting and shadows hlsli)
-
-#define SHADOW_MAP_SIZE					4096
+#define SHADOW_MAP_SIZE					2048
 #define MAX_SHADOWS						8
-#define MAX_LIGHTS						32
 
 namespace BLIB {
 
@@ -26,6 +23,7 @@ namespace BLIB {
 		};
 
 		void init();
+		void uninit();
 		void bind_lights (const generic::scene* geometry, const environment_lights* scene_lights, const std::vector<light>* lights);
 		inline void bind_lights (const generic::scene* geometry) { bind_lights(geometry, nullptr, nullptr); }
 

@@ -151,7 +151,22 @@ namespace BLIB::collision {
 		if (both) penetration.depth *= 0.5f;
 
 		obj->add_pos(penetration.normal * penetration.depth);
-		obj->add_vel(-penetration.normal * dot(penetration.normal, obj->get_vel()));
+		
+		float	wgt = obj->get_wgt();
+		float2	vel	= obj->get_vel();
+		float	vn	= dot(vel, penetration.normal);
+
+		float	jn = -(1.0f + penetration.restitution) * vn * wgt;
+
+		float2 tangent = { -penetration.normal.y, penetration.normal.x };
+		
+		float	vt = dot(vel, tangent);
+		float	jt = -vt * wgt;
+		float	max_t = fabsf(jn) * penetration.friction;
+		jt = clamp(-max_t, jt, max_t);
+
+		obj->add_vel((jn * penetration.normal + jt * tangent) / wgt);
+		land(obj, penetration);
 
 		if (both) { mover->pos -= penetration.normal * penetration.depth; }
 	}
@@ -159,6 +174,8 @@ namespace BLIB::collision {
 	void move(flat::entity* obj, flat::entity* mover, flat::collision penetration, bool both) {
 		float ma = obj->get_wgt();
 		float mb = mover->get_wgt();
+		float ima = 1.0f / ma;
+		float imb = 1.0f / mb;
 		float mass_ratio = both ? ma / (ma + mb) : 1.0f;
 
 		obj->add_pos(penetration.normal * penetration.depth * mass_ratio);
@@ -169,15 +186,24 @@ namespace BLIB::collision {
 
 		if (vn >= 0) return;
 
+		float inverse_mass_ratio = (ima + imb);
+
+		float jn = -(1.0f + penetration.restitution) * vn / inverse_mass_ratio;
+
 		float2 tangent = { -penetration.normal.y, penetration.normal.x };
 		float vt = dot(relative_vel, tangent);
+		float jt = -vt / inverse_mass_ratio;
+		float max_t = fabsf(jn) * penetration.friction;
+		jt = clamp(-max_t, jt, max_t);
 
-		float jn = -(1.0f + RESTITUTION) * vn / (mb + ma);
-		float jt = -vt / (1.0f / ma + 1.0f / mb);
-		jt = clamp(-fabsf(jn) * FRICTION, jt, fabsf(jn) * FRICTION);
+		float2 impulse = jn * penetration.normal + jt * tangent;
 
-		obj->add_vel((jn * penetration.normal * 2 * mb) + (jt * tangent / ma));
-		if (both) { mover->add_vel((-jn * penetration.normal * 2 * ma) - (jt * tangent / mb)); }
+		obj->add_vel(impulse * ima);
+		land(obj, penetration);
+		if (both) { 
+			mover->add_vel(-impulse * imb); 
+			land(mover, penetration);
+		}
 	}
 
 	void move(full::object* obj, full::object* mover, full::collision penetration, bool both) {
@@ -190,7 +216,25 @@ namespace BLIB::collision {
 		if (both) penetration.depth *= 0.5f;
 
 		obj->add_pos(penetration.normal * penetration.depth);
-		obj->add_vel(-penetration.normal * dot(penetration.normal, obj->get_vel()));
+
+		float	wgt = obj->get_wgt();
+		float3	vel	= obj->get_vel();
+		float	vn	= dot(vel, penetration.normal);
+
+		float	jn	= -(1.0f + penetration.restitution) * vn * wgt;
+
+		float3	tangent = vel - vn * penetration.normal;
+		float	t_mag	= tangent.mag();
+		if (t_mag > 0)	tangent /= t_mag;
+		else			tangent = float3(0);
+
+		float	vt		= dot(vel, tangent);
+		float	jt		= -vt * wgt; 
+		float	max_t	= fabsf(jn) * penetration.friction;
+		jt = clamp(-max_t, jt, max_t);
+
+		obj->add_vel((jn * penetration.normal + jt * tangent) / wgt);
+		land(obj, penetration);
 
 		if (both) { mover->add_pos(-penetration.normal * penetration.depth); }
 	}
@@ -198,6 +242,9 @@ namespace BLIB::collision {
 	void move(full::entity* obj, full::entity* mover, full::collision penetration, bool both) {
 		float ma = obj->get_wgt();
 		float mb = mover->get_wgt();
+		float ima = 1.0f / ma;
+		float imb = 1.0f / mb;
+
 		float mass_ratio = both ? ma / (ma + mb) : 1.0f;
 
 		obj->add_pos(penetration.normal * penetration.depth * mass_ratio);
@@ -208,28 +255,40 @@ namespace BLIB::collision {
 
 		if (vn >= 0) return;
 
-		float3 tangent = relative_vel - dot(relative_vel, penetration.normal) * penetration.normal;
-		if ((tangent).mag() > 0) tangent.norm();
-		else tangent = float3(0, 0, 0);
+		float inverse_mass_ratio = (ima + imb);
+
+		float jn = -(1.0f + penetration.restitution) * vn / inverse_mass_ratio;
+
+		float3 tangent = relative_vel - vn * penetration.normal;
+		float t_mag = tangent.mag();
+		if (t_mag > 0) tangent /= t_mag;
+		else tangent = float3(0);
+
 		float vt = dot(relative_vel, tangent);
+		float jt = -vt / inverse_mass_ratio;
 
-		float jn = -(1.0f + RESTITUTION) * vn / (mb + ma);
-		float jt = -vt / (1.0f / ma + 1.0f / mb);
-		jt = clamp(-fabsf(jn) * FRICTION, jt, fabsf(jn) * FRICTION);
+		float max_t = fabsf(jn) * penetration.friction;
+		jt = clamp(-max_t, jt, max_t);
 
-		obj->add_vel((jn * penetration.normal * 2 * mb) + (jt * tangent / ma));
-		if (both) { mover->add_vel((-jn * penetration.normal * 2 * ma) - (jt * tangent / mb)); }
+		float3 impulse = jn * penetration.normal + jt * tangent;
+
+		obj->add_vel(impulse * ima);
+		land(obj, penetration);
+		if (both) { 
+			mover->add_vel(-impulse * imb);
+			land(mover, penetration);
+		}
 	}
 
 	// LAND
 
-	void land(flat::entity* obj, flat::collision penetration) {
+	void land(flat::entity* obj, const flat::collision& penetration) {
 		if		(penetration.normal.y >= vertical_cutoff)	{ obj->floor(); }
 		else if (penetration.normal.y <= -vertical_cutoff)	{ obj->ceil(); }
 		else												{ obj->wall(); }
 	}
 
-	void land(full::entity* obj, full::collision penetration) {
+	void land(full::entity* obj, const full::collision& penetration) {
 		if		(penetration.normal.y >= vertical_cutoff)	{ obj->floor(); }
 		else if (penetration.normal.y <= -vertical_cutoff)	{ obj->ceil(); }
 		else												{ obj->wall(); }
@@ -267,22 +326,38 @@ BLIB::flat::collision BLIB::collision::check(const flat::collider* a, const flat
 	BLIB::flat::collision temp_result(false);
 
 	temp_result = a->collide(b);
-	if (temp_result.depth < result.depth) { if (any) { return temp_result; } else { result = temp_result; } }
+	if (temp_result.depth < result.depth) { 
+		temp_result.restitution = maxim(a->get_restitution(),	b->get_restitution());
+		temp_result.friction	= minim(a->get_friction(),		b->get_friction());
+		if (any) { return temp_result; } else { result = temp_result; } 
+	}
 
 	for (const auto& a_child : a->get_children()) {
 		temp_result = check(static_cast<flat::collider*>(a_child.get()), b, any);
-		if (temp_result.depth < result.depth) { if (any) { return temp_result; } else { result = temp_result; } }
+		if (temp_result.depth < result.depth) { 
+			temp_result.restitution = maxim(a_child->get_restitution(), b->get_restitution());
+			temp_result.friction	= minim(a_child->get_friction(),	b->get_friction());
+			if (any) { return temp_result; } else { result = temp_result; } 
+		}
 	}
 
 	for (const auto& b_child : b->get_children()) {
 		temp_result = check(a, static_cast<flat::collider*>(b_child.get()), any);
-		if (temp_result.depth < result.depth) { if (any) { return temp_result; } else { result = temp_result; } }
+		if (temp_result.depth < result.depth) { 
+			temp_result.restitution = maxim(a->get_restitution(),	b_child->get_restitution());
+			temp_result.friction	= minim(a->get_friction(),		b_child->get_friction());
+			if (any) { return temp_result; } else { result = temp_result; } 
+		}
 	}
 
 	for (const auto& a_child : a->get_children()) {
 		for (const auto& b_child : b->get_children()) {
 			temp_result = check(static_cast<flat::collider*>(a_child.get()), static_cast<flat::collider*>(b_child.get()), any);
-			if (temp_result.depth < result.depth) { if (any) { return temp_result; } else { result = temp_result; } }
+			if (temp_result.depth < result.depth) { 
+				temp_result.restitution = maxim(a_child->get_restitution(), b_child->get_restitution());
+				temp_result.friction	= minim(a_child->get_friction(),	b_child->get_friction());
+				if (any) { return temp_result; } else { result = temp_result; } 
+			}
 		}
 	}
 
@@ -638,23 +713,39 @@ BLIB::full::collision BLIB::collision::check(const full::collider* a, const full
 
 	if (pre_check(static_cast<const BLIB::full::aabb_collider>(*a), static_cast<const BLIB::full::aabb_collider>(*b))) {
 		temp_result = a->collide(b);
-		if (temp_result.depth < result.depth) { if (any) { return temp_result; } else { result = temp_result; } }
+		if (temp_result.depth < result.depth) { 
+			temp_result.restitution	= maxim(a->get_restitution(),	b->get_restitution());
+			temp_result.friction	= minim(a->get_friction(),		b->get_friction());
+			if (any) { return temp_result; } else { result = temp_result; } 
+		}
 	}
 
 	for (const auto& a_child : a->get_children()) {
 		temp_result = check(static_cast<full::collider*>(a_child.get()), b, any);
-		if (temp_result.depth < result.depth) { if (any) { return temp_result; } else { result = temp_result; } }
+		if (temp_result.depth < result.depth) { 
+			temp_result.restitution = maxim(a_child->get_restitution(), b->get_restitution());
+			temp_result.friction	= minim(a_child->get_friction(),	b->get_friction());
+			if (any) { return temp_result; } else { result = temp_result; } 
+		}
 	}
 
 	for (const auto& b_child : b->get_children()) {
 		temp_result = check(a, static_cast<full::collider*>(b_child.get()), any);
-		if (temp_result.depth < result.depth) { if (any) { return temp_result; } else { result = temp_result; } }
+		if (temp_result.depth < result.depth) { 
+			temp_result.restitution = maxim(a->get_restitution(),	b_child->get_restitution());
+			temp_result.friction	= minim(a->get_friction(),		b_child->get_friction());
+			if (any) { return temp_result; } else { result = temp_result; } 
+		}
 	}
 
 	for (const auto& a_child : a->get_children()) {
 		for (const auto& b_child : b->get_children()) {
 			temp_result = check(static_cast<full::collider*>(a_child.get()), static_cast<full::collider*>(b_child.get()), any);
-			if (temp_result.depth < result.depth) { if (any) { return temp_result; } else { result = temp_result; } }
+			if (temp_result.depth < result.depth) { 
+				temp_result.restitution = maxim(a_child->get_restitution(), b_child->get_restitution());
+				temp_result.friction	= minim(a_child->get_friction(),	b_child->get_friction());
+				if (any) { return temp_result; } else { result = temp_result; } 
+			}
 		}
 	}
 
@@ -970,7 +1061,7 @@ namespace BLIB::full {
 		float3 size = a->get_size();
 
 		for (int i = 0; i < 3; i++) {
-			if (dot(axes[i], n) < 0) { axes[i] *= -1; }
+			if (dot(axes[i], n) > 0) { axes[i] *= -1; }
 			corner += size[i] * axes[i];
 		}
 
@@ -1003,40 +1094,45 @@ namespace BLIB::full {
 	}
 
 	collision box_cylinder(const box_collider* a, const cylinder_collider* b) {
+		const float3 up(0, 1, 0);
+
 		float3 a_pos3 = a->get_trans().get_pos();
 		float3 a_size = a->get_size();
 		float3x3 a_axes(a->get_quaternion());
 
 		float3 b_pos3 = b->get_trans().get_pos();
 		float3 local = a_axes.rotate(b_pos3 - a_pos3);
-		float2 b_pos = local.xz();
 
-		float2 a_min = -a_size.xz();
-		float2 a_max = a_size.xz();
-		float2 closest = clamp(a_min, b_pos, a_max);
+		float over_y = minim(a_size.y, local.y + b->get_h()) - maxim(-a_size.y, local.y - b->get_h());
+		if (over_y <= 0) return false;
 
-		float2 d = closest - b_pos;
-		float r = b->get_r();
-		float dist_sq = d.mag_sq();
+		float3 local_up = a_axes.rotate(up);
+		float scale = fabs(local_up.y);
+		if (scale > EPS) { // Non-Horizontal
+			float r = b->get_r() / scale; // effective radius
 
-		if (dist_sq > r * r) { return false; }
+			float2 a_min = -a_size.xz();
+			float2 a_max = a_size.xz();
+			float2 b_pos = local.xz();
+			float2 closest = clamp(a_min, b_pos, a_max);
+			float2 d = closest - b_pos;
+			float dist_sq = d.mag_sq();
 
-		float dist = sqrtf(dist_sq);
-		float over_xz = r - dist;
+			if (dist_sq > r * r) { return false; }
 
-		float world_height = dot(a_axes.y().abs(), a_size);
-		float a_min_y = a_pos3.y - world_height;
-		float a_max_y = a_pos3.y + world_height;
-		float b_min_y = b_pos3.y - b->get_h();
-		float b_max_y = b_pos3.y + b->get_h();
-		float over_y = minim(a_max_y, b_max_y) - maxim(a_min_y, b_min_y);
+			float dist = sqrtf(dist_sq);
+			float over_xz = r - dist;
 
-		if (over_y < over_xz) { return { over_y, (a_pos3.y < b_pos3.y) ? float3(0, -1, 0) : float3(0, 1, 0) }; }
-		else {
-			float3 normal_xz;
-			if (dist > EPS) { normal_xz = d / dist; }
-			else { normal_xz = b_pos.mag_sq() > EPS * EPS ? (-b_pos).norm() : float2(1, 0); }
-			return { over_xz, a_axes.inv_rotate({ normal_xz.x, 0, normal_xz.y }).norm() };
+			if (over_y < over_xz) { return { over_y, (a_pos3.y < b_pos3.y) ? float3(0, -1, 0) : float3(0, 1, 0) }; }
+			else {
+				float3 normal_xz;
+				if (dist > EPS) { normal_xz = d / dist; }
+				else { normal_xz = b_pos.mag_sq() > EPS * EPS ? (b_pos - closest).norm() : float2(1, 0); }
+				return { over_xz, a_axes.inv_rotate({ normal_xz.x, 0, normal_xz.y }).norm() };
+			}
+		}
+		else { // Horizontal
+			return { over_y, (a_pos3.y < b_pos3.y) ? float3(0, -1, 0) : float3(0, 1, 0) };
 		}
 	}
 
@@ -1120,6 +1216,7 @@ namespace BLIB::full {
 	}
 
 	collision sphere_cylinder(const sphere_collider* a, const cylinder_collider* b) {
+		// Assume relevant aabbs already intersect
 		float3 a_pos = a->get_trans().get_pos();
 		float a_r = a->get_r();
 
@@ -1129,22 +1226,41 @@ namespace BLIB::full {
 
 		float2 d_xz = a_pos.xz() - b_pos.xz();
 		float rs = a_r + b_r;
-		if (d_xz.mag_sq() > rs * rs) { return false; }
+		float d_xz_mag_sq = d_xz.mag_sq();
+		if (d_xz_mag_sq > rs * rs) { return false; } 
+
+		// If the circle center is within the cylinder's xz, push only up or down
+		if (d_xz_mag_sq < b_r * b_r) {
+			if (a_pos.y < b_pos.y)	{ return { (a_pos.y + a_r) - (b_pos.y - b_h), {0, -1, 0}}; }
+			else					{ return { (b_pos.y + b_h) - (a_pos.y - a_r), {0,  1, 0}}; }
+		}
+
+		// If the circle center is within cylinder's y, push only in xz
 
 		float min_y = b_pos.y - b_h;
 		float max_y = b_pos.y + b_h;
 
-		float3 d = { d_xz.x, 0, d_xz.y };
-		if (a_pos.y < min_y) { d.y = min_y - a_pos.y; }
-		else if (a_pos.y > max_y) { d.y = max_y - a_pos.y; }
+		float dist_xz = sqrtf(d_xz_mag_sq);
 
+		if (a_pos.y > min_y && a_pos.y < max_y) {
+			float3 normal = (dist_xz > EPS) ? float3{d_xz.x, 0, d_xz.y} / dist_xz : float3(1, 0, 0);
+			return { rs - dist_xz, normal };
+		}
+
+		// Check for edge miss cases
+
+		float3 closest = {
+			b_pos.x + d_xz.x * (b_r / dist_xz),
+			clamp(min_y, a_pos.y, max_y),
+			b_pos.z + d_xz.y * (b_r / dist_xz),
+		};
+
+		float3 d = a_pos - closest;
 		float dist_sq = d.mag_sq();
-
-		if (dist_sq > rs * rs) { return false; }
-
+		if (dist_sq > a_r * a_r) { return false; }
 		float dist = sqrtf(dist_sq);
 		float3 normal = (dist > EPS) ? d / dist : float3(1, 0, 0);
-		return { rs - dist, normal };
+		return { a_r - dist, normal };
 	}
 
 	collision sphere_capsule(const sphere_collider* a, const capsule_collider* b) {
@@ -1702,14 +1818,14 @@ namespace BLIB::full {
 
 	float box_collider::_ray_pick(float3 ray_origin, float3 ray_direction, float3* out_position, float3* out_normal) const {
 		float3 pos = get_trans().get_pos();
-		float3x3 axes(get_trans().get_qtn());
+		float3x3 axes(get_quaternion());
 		float3 size = get_size();
 
 		float3x3 rotated_size;
 		for (int i = 0; i < 3; i++) {
 			float3 temp(0);
 			temp[i] = size[i];
-			rotated_size[i] = axes.rotate(temp);
+			rotated_size[i] = axes.inv_rotate(temp);
 		}
 
 		float3 vertices[8] = {
@@ -1809,29 +1925,37 @@ namespace BLIB::full {
 			}
 		}
 
+		// Check sides
 		float2 ray_origin_xz = ray_origin.xz();
 		float2 ray_direction_xz = ray_direction.xz();
+		float xz_scale_sq = ray_direction_xz.mag_sq();
+		if (xz_scale_sq > EPS * EPS) {
+			float xz_scale = sqrtf(xz_scale_sq);
+			ray_direction_xz /= xz_scale;
 
-		// Check sides
-		flat::circle_collider circle(nullptr, r);
-		circle.sync(pos_xz, float2{ 1 }, 0);
+			flat::circle_collider circle(nullptr, r);
+			circle.sync(pos_xz, float2{ 1 }, 0);
 
-		float2 position_xz, normal_xz;
+			float2 hit_position_xz, hit_normal_xz;
 
-		float hit = circle.ray_pick(ray_origin_xz, ray_direction_xz, &position_xz, out_normal ? &normal_xz : nullptr);
+			float hit = circle.ray_pick(ray_origin_xz, ray_direction_xz, &hit_position_xz, out_normal ? &hit_normal_xz : nullptr);
 
-		if (IS_HIT(hit)) {
-			float3 position = ray_origin + ray_direction * hit;
+			if (IS_HIT(hit)) {
+				hit /= xz_scale;
+				float3 hit_position = ray_origin + ray_direction * hit;
 
-			if (position.y > pos.y - h && position.y < pos.y + h) {
-				min_position = position;
-				min_normal = { normal_xz.x, 0, normal_xz.y };
-				min_hit = hit;
+				if ((hit_position.y > pos.y - h) && (hit_position.y < pos.y + h) && (hit < min_hit)) {
+					min_position = hit_position;
+					min_normal = { hit_normal_xz.x, 0, hit_normal_xz.y };
+					min_hit = hit;
+				}
 			}
 		}
 
-		if (out_position) { *out_position = min_position; }
-		if (out_normal) { *out_normal = min_normal; }
+		if (IS_HIT(min_hit)) {
+			if (out_position)	{ *out_position = min_position; }
+			if (out_normal)		{ *out_normal	= min_normal;	}
+		}
 
 		return min_hit;
 	}
@@ -1846,16 +1970,15 @@ namespace BLIB::full {
 		float min_hit = body.ray_pick(ray_origin, ray_direction, out_position ? &min_position : nullptr, out_normal ? &min_normal : nullptr);
 		if (!(out_position || out_normal) && IS_HIT(min_hit)) { return min_hit; }
 
-		sphere_collider cap[2] = { {nullptr, r}, {nullptr, r} };
-		for (int i = 0; i < 2; i++) {
-			float flip = i ? -1.0f : 1.0f;
-			cap[i].set_off({ 0, get_h() * flip, 0 });
-			cap[i].set_scl(scale);
-			cap[i].sync(get_trans());
+		sphere_collider cap = { nullptr, r };
+		cap.set_scl(get_scl());
+		for (int i = -1; i < 2; i += 2) {
+			cap.set_off({ 0, h * i, 0 });
+			cap.sync(get_trans());
 
 			float3 position;
 			float3 normal;
-			float hit = cap[i].ray_pick(ray_origin, ray_direction, out_position ? &position : nullptr, out_normal ? &normal : nullptr);
+			float hit = cap.ray_pick(ray_origin, ray_direction, out_position ? &position : nullptr, out_normal ? &normal : nullptr);
 			if (hit < min_hit) {
 				if (!(out_position || out_normal)) { return hit; }
 				min_position = position;
@@ -1865,8 +1988,8 @@ namespace BLIB::full {
 		} 
 
 		if (IS_HIT(min_hit)) {
-			if (out_position) { *out_position = min_position; }
-			if (out_normal)   { *out_normal =  min_normal; }
+			if (out_position) { *out_position	= min_position; }
+			if (out_normal)   { *out_normal		= min_normal;	}
 		}
 
 		return min_hit;
@@ -1955,7 +2078,7 @@ namespace BLIB::full {
 		if (!debug_model) { debug_model.reset(create_quad()); }
 		( rs & render_settings(rasterize::WIRE, stencil::SURFACE_NONE, pixel_shader{ "default_full" }) & debug_model->default_rs()).set();
 		transform collider_trans;
-		collider_trans.set_qtn(face_to(get_normal()));
+		collider_trans.set_qtn(quaternion::face_to({0, 0, -1}, get_normal()));
 		collider_trans.set_scl(get_scl());
 		collider_trans.set_pos(trans.get_pos());
 		debug_model->render(collider_trans, WHITE);

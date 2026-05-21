@@ -71,5 +71,7 @@ namespace BLIB {
 			current_state = state;
 			device::context()->PSSetSamplers(slot, 1, get(state));
 		}
+
+		void release_all() { sampler_states.clear(); }
 	}
 }

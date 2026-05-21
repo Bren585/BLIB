@@ -1,8 +1,4 @@
-Lighting
-- Fix slightly misaligned shadows
-
-Particles
-- particles
+Connectors (Springs)
 
 Create Model Config Tool
 Create Sprite Config Tool (Animations)
@@ -10,3 +6,18 @@ Create Sprite Config Tool (Animations)
 Evaluate allowing non-const model passing for objects (absolutely disallow if possible)
 move sliders -> "Attribute Controller" class
 Make proper uvs for some geometric primitives?
+
+make full::collision operator bool const
+
+float rand (and for vectors)
+
+vector reflection 
+(R)eturn (I)nput (N)ormal reflects I off of surface N
+R = I - 2 * dot(I, N) * N
+
+Minigame Ideas
+- Spotlight the robber (Stationary robber -> moving robber)
+- Hit the target (Stationary target -> Moving Target)
+- Billiards (Bocci?)
+- Color Matching
+- Platformer (No hazards -> hazards -> timed hazards)

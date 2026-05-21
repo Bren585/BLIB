@@ -1,6 +1,7 @@
 #include "full_vs.hlsli"
 
-cbuffer light_perspective : register(b1)
+#include "constant_buffer_indices.h"
+cbuffer light_perspective : register(SHADOW_CB)
 {
     row_major float4x4 light_view_proj;
 }

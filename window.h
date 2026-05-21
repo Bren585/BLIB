@@ -37,10 +37,12 @@ namespace BLIB {
 			fullscreen
 		};
 
-		void create(HINSTANCE instance, int cmd_show, WNDPROC window_procedure, const wchar_t* name, Microsoft::WRL::ComPtr<IDXGISwapChain>* swap_chain_ptr);
+		void create(HINSTANCE instance, int cmd_show, WNDPROC window_procedure, const wchar_t* name, IDXGISwapChain* swap_chain_ptr);
 		HWND get();
 
-		void resize(float2 size);
+		void set_size(float2 size);
+		void internal_update(float2 size);
+		void resolve_resize();
 
 		void rename(const wchar_t* name);
 		const wchar_t* name();

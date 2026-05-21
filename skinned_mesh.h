@@ -39,7 +39,9 @@ namespace BLIB {
 		void fetch_materials	(string fbx_filename,		FbxScene* fbx_scene);
 		void fetch_bones		(const FbxMesh* fbx_mesh,	std::vector<std::vector<bone_inf>>& bones);
 		void fetch_skeleton		(const FbxMesh* fbx_mesh,	skeleton& bind_pose);
-		void fetch_animations	(FbxScene* fbx_scene,		std::vector<animation>& animation_clips, float sampling_rate);
+		void fetch_attachment	(FbxNode* fbx_node,			skeleton& bind_pose);
+		void fallback_skeleton	(skeleton& bind_pose);
+		void fetch_animations	(FbxScene* fbx_scene,		std::unordered_map<string, animation>& animation_clips, float sampling_rate);
 
 		void create_com_objects();
 
@@ -60,6 +62,7 @@ namespace BLIB {
 
 		skinned_mesh() {}
 	protected:
+		string fbx_name;
 		scene_view scene_view;
 		float3 minimum;
 		float3 maximum;
@@ -71,6 +74,8 @@ namespace BLIB {
 		skinned_mesh(const char* fbx_filename, bool triangulate = false, coordinate_system sys = RH_Y);
 		virtual ~skinned_mesh() = default;
 
+		render_settings default_rs() const override { return vertex_shader("skinned_full"); };
+
 		bool append_animations(string animation_filename, float sampling_rate);
 		void update_animation(animation::keyframe& keyframe);
 
@@ -80,7 +85,7 @@ namespace BLIB {
 
 		uint32_t ray_collision(const transform& model_transform, const float3& origin, const float3& ray, float3* out_int_point, float3* out_int_normal, bool any_hit = false) const override;
 
-		SERIALIZE_BASE(model, scene_view, minimum, maximum)
+		SERIALIZE_BASE(model, fbx_name, scene_view, minimum, maximum)
 	};
 
 }

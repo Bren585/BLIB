@@ -1,0 +1,9 @@
+#ifndef LIGHTING_CONSTANTS
+#define LIGHTING_CONSTANTS
+
+#define MAX_LIGHT_COUNT			16
+#define SKYLIGHT_SHADOW_INDEX	1
+#define LIGHT_NEAR				1.0f
+#define LIGHT_FAR				100.0f
+
+#endif

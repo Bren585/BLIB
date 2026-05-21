@@ -15,5 +15,7 @@ namespace BLIB {
 		};
 
 		void set(state s = DEFAULT, int slot = 0);
+
+		void release_all();
 	}
 }

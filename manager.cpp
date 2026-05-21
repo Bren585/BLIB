@@ -15,13 +15,13 @@ namespace BLIB {
 
 		unordered_map<task_id, unique_ptr<status>> tasks;
 
-		task_id scene_stack[scene_stack_size] = { 0 };
+		task_id		scene_stack[scene_stack_size] = { 0 };
 
 		task_id		id_counter		= 1;
 		bool		stop			= false;
 
 		namespace _private {
-			auto& get_tasks() { return tasks; }
+			unordered_map<task_id, unique_ptr<status>>& get_tasks() { return tasks; }
 		}
 
 		//static scene* get_scene(task_id id) {
@@ -33,6 +33,9 @@ namespace BLIB {
 		static void end_task(task_id id) {
 			tasks[id]->kill();
 			tasks.erase(id);
+			for (int slot = 0; slot < scene_stack_size; slot++) {
+				if (scene_stack[slot] == id) { scene_stack[slot] = 0; }
+			}
 		}
 
 		bool tick(float elapsed_time) {
@@ -43,9 +46,9 @@ namespace BLIB {
 
 			for (auto& task : tasks) {
 				status::activity report = task.second->report();
-				if (report == status::finished) { clean_up.push_back(task.first); continue; }
-				active = true;
-				if (report != status::inactive) { task.second->tick(elapsed_time); }
+				if (report == status::finished	) { clean_up.push_back(task.first); }
+				else { active = true;  }
+				task.second->tick(elapsed_time);
 			}
 
 			for (task_id id : clean_up) {
@@ -57,8 +60,8 @@ namespace BLIB {
 		}
 
 		void resize(float2 size) {
-			for (auto& task : tasks) {
-				scene* scene_cast = dynamic_cast<BLIB::scene*>(task.second.get());
+			for (int i = 0; i < scene_stack_size; i++) {
+				scene* scene_cast = get_scene(scene_stack[i]);
 				if (scene_cast) { scene_cast->resize(size); }
 			}
 		}
@@ -68,7 +71,18 @@ namespace BLIB {
 		}
 
 		void kill() {
+			bool pending;
+			do {
+				pending = false;
+				for (auto& task : tasks) {
+					task.second->try_end_load();
+					if (task.second->report() == status::unloaded) { pending = true; }
+				}
+				if (pending) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			} while (pending);
+
 			for (auto& task : tasks) {
+				task.second->unpreserve(task.second.get());
 				task.second->kill();
 			}
 			tasks.clear();
@@ -77,7 +91,7 @@ namespace BLIB {
 
 		task_id add(status* s) {
 			if (s->init_id(id_counter)) { id_counter++; }
-			tasks.insert({ s->get_id(), unique_ptr<status>(s)});
+			tasks.emplace(s->get_id(), unique_ptr<status>(s));
 			return s->get_id();
 		}
 
@@ -102,8 +116,9 @@ namespace BLIB {
 			else {
 				if (scene_stack[slot]) unstage(scene_stack[slot]);
 				scene_stack[slot] = stage_scene->get_id();
+				stage_scene->resize(window::size());
 				stage_scene->wake();
-				stage_scene->preserve();
+				stage_scene->preserve(stage_scene);
 			}
 		}
 
@@ -123,7 +138,7 @@ namespace BLIB {
 					}
 					else {
 						scene_stack[slot] = 0;
-						scene_ptr->unpreserve();
+						scene_ptr->unpreserve(scene_ptr);
 						scene_ptr->sleep();
 					}
 					return slot;

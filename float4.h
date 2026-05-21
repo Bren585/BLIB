@@ -29,6 +29,21 @@ public:
 	inline float3 xzw() const { return { x, z, w }; }
 	inline float3 yzw() const { return { y, z, w }; }
 
+	inline float4 xyzo() const { return { x, y, z, 0 }; }
+	inline float4 xyow() const { return { x, y, 0, w }; }
+	inline float4 xozw() const { return { x, 0, z, w }; }
+	inline float4 oyzw() const { return { 0, y, z, w }; }
+	inline float4 xoow() const { return { x, 0, 0, w }; }
+	inline float4 oyow() const { return { 0, y, 0, w }; }
+	inline float4 oozw() const { return { 0, 0, z, w }; }
+	inline float4 xyoo() const { return { x, y, 0, 0 }; }
+	inline float4 xozo() const { return { x, 0, z, 0 }; }
+	inline float4 oyzo() const { return { 0, y, z, 0 }; }
+	inline float4 xooo() const { return { x, 0, 0, 0 }; }
+	inline float4 oyoo() const { return { 0, y, 0, 0 }; }
+	inline float4 oozo() const { return { 0, 0, z, 0 }; }
+	inline float4 ooow() const { return { 0, 0, 0, w }; }
+
 	inline				float4 operator+(float4 that	) const { return { x + that.x,	y + that.y,		z + that.z,  w + that.w		}; }
 	inline				float4 operator*(float4 that	) const { return { x * that.x,	y * that.y,		z * that.z,  w * that.w		}; }
 	ARITHMETIC inline	float4 operator*(A scale		) const { return { x * scale,	y * scale,		z * scale,	 w * scale		}; }

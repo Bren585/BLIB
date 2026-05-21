@@ -9,14 +9,13 @@ sprite_batch::sprite_batch(const string& filename, size_t max_sprites, flags fla
 	HRESULT hr{ S_OK };
 
 	D3D11_BUFFER_DESC buffer_desc{};
-	buffer_desc.ByteWidth = (UINT)(sizeof(vertex) * max_vertices);
-	buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
-	buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	buffer_desc.MiscFlags = 0;
+	buffer_desc.ByteWidth			= (uint)(sizeof(vertex) * max_vertices);
+	buffer_desc.Usage				= D3D11_USAGE_DYNAMIC;
+	buffer_desc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;
+	buffer_desc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
+	buffer_desc.MiscFlags			= 0;
 	buffer_desc.StructureByteStride = 0;
-	hr = device::get()->CreateBuffer(&buffer_desc, NULL, vertex_buffer.GetAddressOf());
-	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
+	hr = device::get()->CreateBuffer(&buffer_desc, NULL, vertex_buffer.GetAddressOf()); VERIFY;
 }
 
 sprite_batch::sprite_batch(sprite_batch&& o) noexcept : sprite(clone_flags), max_vertices(o.max_vertices) {
@@ -30,23 +29,21 @@ void sprite_batch::prerender(float2 pos, float2 scale, float2 pivot, float rotat
 	vertex& point		= vertices.emplace_back();
 
 	point.position		= pos;
-	point.size			= scale * tile_size;
+	point.scale			= scale;
 	point.pivot			= pivot;
 	point.rotation		= rotation;
-	point.viewport		= get_viewport();
-	point.y_invert		= get_y_invert();
-	point.tile_size		= tile_size;
 	point.tile_index	= tile_index;
-	point.texture_size	= get_size();
+	point.tile_size		= tile_size;
 }
 
-void sprite_batch::begin(color color) {
+void sprite_batch::begin(color color, float2 tile_size) {
 	vertices.clear();
-	update_constant_buffer(color);
+	update_constant_buffer(color, tile_size);
 }
 
 void sprite_batch::end() {
 	HRESULT hr{ S_OK };
+
 	D3D11_MAPPED_SUBRESOURCE mapped_subresource{};
 	hr = device::context()->Map(vertex_buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource); VERIFY;
 	size_t vertex_count = vertices.size();

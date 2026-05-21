@@ -10,19 +10,20 @@ namespace BLIB {
 		color background;
 
 	public:
-		canvas(float2 size);
+		canvas(float2 size = {1, 1});
 
 		void clear() const;
 
 		void resize(float2 size);
-		float2 get_size() const { return view.get_size(); }
+		float2 get_view_size() const { return view.get_size(); }
 
-		void draw(renderable* r, render_settings rs = {}) const;
+		//void _render(render_settings settings) const override { assert((bool)get_size()); flat::object::_render(settings); }
+		void draw(const renderable* r, render_settings rs = {}) const;
 
-		float type(string s, float2 pos, float2 size, font_name font = FONT_DEFAULT, color color = { 1.0f, 1.0f, 1.0f, 1.0f }, float2 align = { -1, -1 }) const;
+		float type(string s, float2 pos, float2 scale, string font = FONT_DEFAULT, color color = { 1.0f, 1.0f, 1.0f, 1.0f }, float2 align = { -1, -1 }) const;
 
-		void focus	(int slot = FOCUS_OVERWRITE)	const { view.focus(slot);	}
-		void unfocus()								const { view.unfocus();		}
+		bool focus	(int slot = FOCUS_OVERWRITE)	const { return view.focus(slot);	}
+		void unfocus()								const { view.unfocus();				}
 
 		operator render_target::view*				()			{ return &view; }
 		render_target::view*			get_view	()			{ return &view; }
@@ -36,7 +37,8 @@ namespace BLIB {
 		void	set_background(color c)			{ background = c; }
 		color	get_background()		const	{ return background; }	
 		
-		void snapshot_to_sprite(sprite* target) const;
+		void snapshot_to_sprite	(sprite*	target		) const;
+		void snapshot_to_file	(string		filename	) { view.save_to_file(filename); }
 		
 	};
 }

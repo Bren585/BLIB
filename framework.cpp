@@ -51,7 +51,7 @@ namespace BLIB {
 #endif
 
 		/* Window Setup */ {
-			window::create(instance, cmd_show, window_procedure, name, &swap_chain);
+			window::create(instance, cmd_show, window_procedure, name, swap_chain.Get());
 		}
 
 		/* Create Com Objects */ {
@@ -65,18 +65,19 @@ namespace BLIB {
 
 			DXGI_SWAP_CHAIN_DESC swap_chain_desc{};												// device and swap chain
 			{
-				swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-				swap_chain_desc.BufferCount = 2;
-				swap_chain_desc.BufferDesc.Width = static_cast<UINT>(window::size().x);
-				swap_chain_desc.BufferDesc.Height = static_cast<UINT>(window::size().y);
-				swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-				swap_chain_desc.BufferDesc.RefreshRate.Numerator = 60;
-				swap_chain_desc.BufferDesc.RefreshRate.Denominator = 1;
-				swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-				swap_chain_desc.OutputWindow = window::get();
-				swap_chain_desc.SampleDesc.Count = 1;
-				swap_chain_desc.SampleDesc.Quality = 0;
-				swap_chain_desc.Windowed = DEFAULT_WINDOW_MODE == window::windowed;
+				swap_chain_desc.SwapEffect			= DXGI_SWAP_EFFECT_FLIP_DISCARD;
+				swap_chain_desc.BufferUsage			= DXGI_USAGE_RENDER_TARGET_OUTPUT;
+				swap_chain_desc.BufferCount			= 2;
+				swap_chain_desc.OutputWindow		= window::get();
+				swap_chain_desc.SampleDesc.Count	= 1;
+				swap_chain_desc.SampleDesc.Quality	= 0;
+				swap_chain_desc.Windowed			= DEFAULT_WINDOW_MODE == window::windowed;
+
+				swap_chain_desc.BufferDesc.Width					= static_cast<UINT>(window::size().x);
+				swap_chain_desc.BufferDesc.Height					= static_cast<UINT>(window::size().y);
+				swap_chain_desc.BufferDesc.Format					= DXGI_FORMAT_R8G8B8A8_UNORM;
+				swap_chain_desc.BufferDesc.RefreshRate.Numerator	= 60;
+				swap_chain_desc.BufferDesc.RefreshRate.Denominator	= 1;
 
 				D3D_FEATURE_LEVEL feature_levels{ D3D_FEATURE_LEVEL_11_0 };
 				hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, create_device_flags, &feature_levels, 1, D3D11_SDK_VERSION, &swap_chain_desc, swap_chain.GetAddressOf(), device::get_address(), NULL, device::context_address()); VERIFY;
@@ -86,34 +87,34 @@ namespace BLIB {
 
 			D3D11_VIEWPORT viewport{};															// default viewport
 			{
-				viewport.TopLeftX = 0;
-				viewport.TopLeftY = 0;
-				viewport.Width = window::size().x;
-				viewport.Height = window::size().y;
-				viewport.MinDepth = 0.0f;
-				viewport.MaxDepth = 1.0f;
+				viewport.TopLeftX	= 0;
+				viewport.TopLeftY	= 0;
+				viewport.Width		= window::size().x;
+				viewport.Height		= window::size().y;
+				viewport.MinDepth	= 0.0f;
+				viewport.MaxDepth	= 1.0f;
 				device::context()->RSSetViewports(1, &viewport);
 			}
 
 		}
 
 		/* INIT */ {
-			render_target::init(swap_chain.Get());
-			input::init();
-			lighting::init();
-			audio::init();
+			render_target	::init(swap_chain.Get());
+			input			::init();
+			lighting		::init();
+			audio			::init();
 			HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 		}
 
 		/* Default Settings */ {
 			render_target::focus_main();
-			sampler::set(sampler::DEFAULT, 0);
-			sampler::set(sampler::LINEAR, 1);
-			sampler::set(sampler::COMPARE, 2);
-			sampler::set(sampler::CLAMP_POINT, 3);
-			stencil::set();
-			blend::set();
-			rasterize::set();
+			sampler		::set(sampler::DEFAULT,		0);
+			sampler		::set(sampler::LINEAR,		1);
+			sampler		::set(sampler::COMPARE,		2);
+			sampler		::set(sampler::CLAMP_POINT,	3);
+			stencil		::set();
+			blend		::set();
+			rasterize	::set();
 
 			target_frame_time = 1.0f / target_fps;
 		}
@@ -157,9 +158,6 @@ namespace BLIB {
 #endif
 
 		update();
-		render_target::clear_main();
-		active = manager::tick(delta_time);
-		manager::display();
 		render();
 
 		return active;
@@ -173,11 +171,22 @@ namespace BLIB {
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
 #endif
+		active = manager::tick(delta_time);
 	}
 
 	void render()
 	{
 		RENDER_LOCK;
+
+		window::resolve_resize();
+
+		render_target::unfocus_all();
+		render_target::clear_main();
+		render_target::focus_main();
+		manager::display();
+
+		string queued_screenshot = empty_screenshot_queue();
+		if (queued_screenshot != "") { render_target::_private::get_main()->save_to_file(queued_screenshot); }
 
 #ifdef _DEBUG
 		{
@@ -216,24 +225,33 @@ namespace BLIB {
 
 		BOOL fullscreen = 0;
 		swap_chain->GetFullscreenState(&fullscreen, 0);
-		if (fullscreen)
-		{
-			swap_chain->SetFullscreenState(FALSE, 0);
-		}
-
-		texture::release_all();
+		if (fullscreen) { swap_chain->SetFullscreenState(FALSE, 0); }
 
 		CoUninitialize();
 
 		audio::uninit();
-
-		active = false;
+		blend::release_all();
+		debug::draw::uninit();
+		lighting::uninit();
+		rasterize::release_all();
+		render_target::release_main();
+		sampler::release_all();
+		shader::release_all();
+		stencil::release_all();
+		text::uninit();
+		texture::release_all();
 
 		device::context()->ClearState();
 		device::context()->Flush();
 		swap_chain.Reset();
+
+#ifdef _DEBUG
+		device::report_live();
+#endif
+
 		device::reset();
 		
+		active = false;
 		return 0;
 	}
 
@@ -270,9 +288,11 @@ namespace BLIB {
 			PAINTSTRUCT ps{};
 			BeginPaint(hwnd, &ps);
 			EndPaint(hwnd, &ps);
+			break;
 		}
-		break;
-
+		case WM_CHAR:
+			input::wm_char(static_cast<wchar_t>(wparam));
+			break;
 		case WM_DESTROY:
 			PostQuitMessage(0);
 			break;
@@ -313,7 +333,7 @@ namespace BLIB {
 			resizing = false;
 			RECT rc;
 			GetClientRect(window::get(), &rc);
-			window::resize({static_cast<float>(rc.right - rc.left), static_cast<float>(rc.bottom - rc.top)});
+			window::internal_update({static_cast<float>(rc.right - rc.left), static_cast<float>(rc.bottom - rc.top)});
 			tictoc.start();
 			break;
 		case WM_SIZE:
@@ -323,13 +343,15 @@ namespace BLIB {
 				break;
 			case SIZE_MAXIMIZED:
 				window::set_mode(window::windowed);
-				window::resize({ static_cast<float>(LOWORD(lparam)), static_cast<float>(HIWORD(lparam)) });
+				window::internal_update({ static_cast<float>(LOWORD(lparam)), static_cast<float>(HIWORD(lparam)) });
 				break;
 			case SIZE_RESTORED:
 				if (!resizing) {
 					window::set_mode(window::windowed);
-					window::resize({ static_cast<float>(LOWORD(lparam)), static_cast<float>(HIWORD(lparam)) });
+					window::internal_update({ static_cast<float>(LOWORD(lparam)), static_cast<float>(HIWORD(lparam)) });
 				}
+				break;
+			default:
 				break;
 			}
 		default:

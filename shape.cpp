@@ -27,6 +27,10 @@ namespace BLIB::debug::draw {
 		ready = true;
 	}
 
+	void uninit() {
+		vertex_buffers.clear();
+	}
+
 	ID3D11Buffer* get_buffer(int vertex_count) {
 		auto check = vertex_buffers.try_emplace(vertex_count);
 		auto& vertex_buffer = check.first->second;
@@ -63,6 +67,7 @@ namespace BLIB::debug::draw {
 
 		shader::set_ps("debug_shapes");
 		shader::set_vs("debug_shapes");
+		shader::set_gs(NULL_SHADER);
 
 		//const camera* cam = viewer::get_active();
 		//float4x4 view_proj;

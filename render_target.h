@@ -15,6 +15,8 @@
 #define FOCUS_DEPTH		-2
 #define FOCUS_NONE		-3
 
+#define SCREENSHOT_EXT ".png"
+
 namespace BLIB {
 	
 	namespace render_target {
@@ -22,6 +24,7 @@ namespace BLIB {
 		class view {
 			friend void bind_all();
 		private:
+			IDXGISwapChain* const								swap_chain_ptr;
 			Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		render_target_view;
 			Microsoft::WRL::ComPtr<ID3D11DepthStencilView>		depth_stencil_view;
 			Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	shader_resource_view;
@@ -31,9 +34,10 @@ namespace BLIB {
 			view*												cached_views[MAX_VIEWS]	{ nullptr };
 			view*												cached_depth			{ nullptr };
 			int													active_in_slot			{ FOCUS_NONE };
+			float2												cached_viewport			{};
 
 			void create_back_buffer(D3D11_TEXTURE2D_DESC desc);
-			void get_back_buffer(IDXGISwapChain* swap_chain);
+			void get_back_buffer();
 			void create_depth_stencil();
 
 		public:
@@ -41,16 +45,17 @@ namespace BLIB {
 			view(IDXGISwapChain* swap_chain);
 
 			void clear(color bkg);
-			void resize(float2 size, IDXGISwapChain* swap_chain = nullptr);
-			void focus(int slot = FOCUS_OVERWRITE);
+			void resize(float2 size);
+			bool focus(int slot = FOCUS_OVERWRITE);
 			void unfocus();
 			void release();
 			
-			void copy_SRV_to		(ID3D11ShaderResourceView** dest)	const { shader_resource_view.CopyTo(dest); }
-			void get_SRV_resource	(ID3D11Resource** out)				const { shader_resource_view->GetResource(out); }
-			void bind_SRV			(int slot)							const { device::context()->PSSetShaderResources(slot, 1, shader_resource_view.GetAddressOf()); }
-			void bind_depth			(int slot)							const { device::context()->PSSetShaderResources(slot, 1, depth_shader_resource.GetAddressOf()); }
+			void copy_SRV_to		(ID3D11ShaderResourceView** dest)	const	{ shader_resource_view.CopyTo(dest); }
+			void get_SRV_resource	(ID3D11Resource** out)				const	{ shader_resource_view->GetResource(out); }
+			void bind_SRV			(int slot)							const	{ device::context()->PSSetShaderResources(slot, 1, shader_resource_view.GetAddressOf()); }
+			void bind_depth			(int slot)							const	{ device::context()->PSSetShaderResources(slot, 1, depth_shader_resource.GetAddressOf()); }
 
+			void save_to_file(string filename);
 #ifdef _DEBUG
 			ID3D11ShaderResourceView* imgui_get_SRV()		{ return shader_resource_view.Get(); }
 			ID3D11ShaderResourceView* imgui_get_depth_SRV() { return depth_shader_resource.Get(); }
@@ -61,13 +66,18 @@ namespace BLIB {
 
 		void init(IDXGISwapChain* swap_chain);
 		void clear_main();
-		void resize_main(float2 size, IDXGISwapChain* swap_chain);
+		void resize_main(float2 size);
 		void focus_main();
 		void unfocus_main();
 		void release_main();
 		void set_main_background(color c);
 
+		namespace _private {
+			view* get_main();
+		}
+
 		void unbind();
+		void unfocus_all();
 
 		class auto_focus {
 		private:
@@ -94,4 +104,11 @@ namespace BLIB {
 
 #define quick_focus(views) auto_focus _af(views)
 	}
+
+	void set_screenshot_filepath(string filepath);
+
+	void screenshot(string filename = "screenshot");
+
+	string empty_screenshot_queue();
+
 }

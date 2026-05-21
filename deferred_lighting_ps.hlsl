@@ -3,7 +3,7 @@
 #include "lighting.hlsli"
 #include "camera.hlsli"
 
-SamplerState pixel			: register(s1);
+SamplerState pixel : register(s1);
 SamplerState pixel_clamp	: register(s3);
 
 Texture2D albedo_map	    : register(t0);
@@ -64,7 +64,7 @@ float4 main(PS_IN pin) : SV_TARGET
         float3  L                       = normalize(-skylight_direction.xyz);
         float3  H                       = normalize(V + L);
         float3  light_space_position    = calculate_light_position(skylight_view_proj, world_position);
-        float   shadow                  = calculate_shadow(light_space_position, SKYLIGHT_SHADOW_INDEX, N, L);
+        float   shadow                  = calculate_shadow(light_space_position, SKYLIGHT_SHADOW_INDEX, N, L, ORTHO_CONST_BIAS, ORTHO_SLOPE_SCALE);
         float3  sky_radiance            = skylight_color.rgb * skylight_intensity * shadow;
         
         sky_lighting = sky_radiance * calculate_lighting(world_position, albedo.rgb, N, L, V, H, R, M, S);
@@ -91,7 +91,7 @@ float4 main(PS_IN pin) : SV_TARGET
         float3  H                       = normalize(V + L);
         float3  light_space_position    = calculate_light_position(source.view_proj, world_position);
         float   sharpness               = calculate_sharpness(light_space_position, source.fade);
-        float   shadow                  = calculate_shadow(light_space_position, source.shadow_index, N, L);
+        float   shadow                  = calculate_shadow(light_space_position, source.shadow_index, N, L, PERSPECTIVE_CONST_BIAS, PERSPECTIVE_SLOPE_SCALE);
         float3  radiance                = source.color.rgb * source.intensity * shadow * sharpness;
         
         total_lights += radiance * calculate_lighting(world_position, albedo.rgb, N, L, V, H, R, M, S);

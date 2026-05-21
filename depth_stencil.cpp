@@ -7,12 +7,12 @@ using Microsoft::WRL::ComPtr;
 namespace BLIB {
 
 	namespace stencil {
-		map<state, ComPtr<ID3D11DepthStencilState>> rasterizer_states = map<state, ComPtr<ID3D11DepthStencilState>>();
+		map<state, ComPtr<ID3D11DepthStencilState>> stencil_states = map<state, ComPtr<ID3D11DepthStencilState>>();
 		state current_state = UNDEFINED;
 
 		ID3D11DepthStencilState* get(state state) {
-			auto it = rasterizer_states.find(state);
-			if (it != rasterizer_states.end()) { return it->second.Get(); }
+			auto it = stencil_states.find(state);
+			if (it != stencil_states.end()) { return it->second.Get(); }
 
 			HRESULT hr{ S_OK };
 			D3D11_DEPTH_STENCIL_DESC desc{};
@@ -41,8 +41,8 @@ namespace BLIB {
 				_ASSERT_EXPR(false, L"Invalid Rasterizer State");
 			}
 
-			rasterizer_states.insert(std::make_pair(state, ComPtr<ID3D11DepthStencilState>()));
-			auto jt = rasterizer_states.find(state);
+			stencil_states.insert(std::make_pair(state, ComPtr<ID3D11DepthStencilState>()));
+			auto jt = stencil_states.find(state);
 			hr = device::get()->CreateDepthStencilState(&desc, jt->second.GetAddressOf()); VERIFY;
 
 			return jt->second.Get();
@@ -54,5 +54,7 @@ namespace BLIB {
 			current_state = state;
 			device::context()->OMSetDepthStencilState(get(state), 1);
 		}
+
+		void release_all() { stencil_states.clear(); }
 	}
 }

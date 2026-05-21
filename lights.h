@@ -1,5 +1,6 @@
 #pragma once
 #include "math.h"
+#include "lighting_constants.h"
 
 #define SKYLIGHT_DEFAULT				{ -0.5f, -0.5f, -0.5f }
 #define SKYLIGHT_COLOR_DEFAULT			WHITE
@@ -10,7 +11,6 @@
 #define AMBIENT_INTENSITY_DEFAULT		1
 #define AMBIENT_INTENSITY_MAX			10
 
-#define MAX_LIGHT_COUNT					16
 #define LIGHT_INTENSITY_DEFAULT			2
 #define LIGHT_INTENSITY_MAX				10
 
@@ -30,6 +30,7 @@ namespace BLIB {
 		float spread		= 0; // How big the spotlight is, from 0-1, where 1 is a point light, 0.25 is a big circle, 0.1 is a small circle, and 0 is no light.
 		float fade			= 0; // How fast the light falls off as it approaches the edge of the circle, where 0 is no fade (perfect circle) and 1 is a pinpoint.
 	
+		bool active			= true;
 		bool shadows		= true;
 		mutable bool dirty	= true;
 
@@ -57,15 +58,20 @@ namespace BLIB {
 			if (dirty) {
 				DirectX::XMStoreFloat4x4(&view_proj,
 					DirectX::XMMatrixLookAtLH((xmvector)position, (xmvector)(position + direction), VECTOR_UP) *
-					DirectX::XMMatrixPerspectiveFovLH(maxim(spread * PI, 0.001f), 1, 0.01f, 100)
+					DirectX::XMMatrixPerspectiveFovLH(maxim(spread * PI, 0.01f), 1, LIGHT_NEAR, LIGHT_FAR)
 				);
 			}
 			return view_proj;
 		}
 
-		bool casts_shadows() const	{ return shadows; }
-		void enable_shadows()		{ shadows = true; }
-		void disable_shadows()		{ shadows = false; }
+		bool casts_shadows	() const	{ return shadows;	}
+		void enable_shadows	()			{ shadows = true;	}
+		void disable_shadows()			{ shadows = false;	}
+
+		bool is_active	() const	{ return active;	}
+		void enable		()			{ active = true;	}
+		void disable	()			{ active = false;	}
+		void toggle		()			{ active = !active;	}
 	};
 
 	class environment_lights {

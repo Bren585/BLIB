@@ -16,6 +16,9 @@ public:
 	float2(float x, float y)		: DirectX::XMFLOAT2(x, y)	{}
 	explicit float2(float s = 0)	: DirectX::XMFLOAT2(s, s)	{}
 
+	inline float2 oy() const { return { 0, y }; }
+	inline float2 xo() const { return { x, 0 }; }
+
 	inline				float2 operator+(const float2& that	) const { return { x + that.x,	y + that.y		};	}
 	inline				float2 operator*(const float2& that ) const { return { x * that.x,	y * that.y		};	}
 	ARITHMETIC inline	float2 operator*(const A& scale		) const { return { x * scale,	y * scale		};	}

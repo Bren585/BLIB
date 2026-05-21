@@ -4,6 +4,8 @@
 #include <d3d11.h>
 #include <d3d11_1.h>
 #include <wrl.h>
+#include "verify.h"
+#include "render_lock.h"
 
 class device {
 private:
@@ -80,6 +82,7 @@ public:
 
 	static void begin_note(const wchar_t* note) {
 #ifdef _DEBUG 
+		RENDER_LOCK;
 		if (instance().annotation && instance().annotation->GetStatus()) {
 			instance().annotation->BeginEvent(note);
 		}
@@ -88,6 +91,7 @@ public:
 
 	static void end_note() {
 #ifdef _DEBUG 
+		RENDER_LOCK;
 		if (instance().annotation && instance().annotation->GetStatus()) {
 			instance().annotation->EndEvent();
 		}

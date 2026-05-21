@@ -18,6 +18,13 @@ public:
 	inline float2 xz() const { return { x, z }; }
 	inline float2 yz() const { return { y, z }; }
 
+	inline float3 xyo() const { return { x, y, 0 }; }
+	inline float3 xoz() const { return { x, 0, z }; }
+	inline float3 oyz() const { return { 0, y, z }; }
+	inline float3 xoo() const { return { x, 0, 0 }; }
+	inline float3 oyo() const { return { 0, y, 0 }; }
+	inline float3 ooz() const { return { 0, 0, z }; }
+
 	inline				float3 operator+(const float3& that			) const { return { x + that.x,	y + that.y,		z + that.z		}; }
 	inline				float3 operator*(const float3& that			) const { return { x * that.x,	y * that.y,		z * that.z		}; }
 	inline				float3 operator*(const DirectX::XMMATRIX& m	) const { return DirectX::XMVector4Transform((xmvector)*this, m	); }

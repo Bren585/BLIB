@@ -24,11 +24,13 @@ namespace BLIB {
 		float							mouse_scroll		= 0.0f;
 		float							mouse_scroll_value	= 0.0f;
 		bool							reset_scroll_value	= false;
+		string							typing_buffer;
 
 		void init() {
 			keyboard = std::make_unique<Keyboard>();
 			mouse = std::make_unique<Mouse>();
 			mouse->SetWindow(window::get());
+			set_mouse_locked(false);
 
 #define AUTO_ASSIGN(x)		keybinds[Keyboard::x]			= key::x
 #define AUTO_ASSIGN_LR(x)	keybinds[Keyboard::Left##x]		= key::L##x; \
@@ -69,8 +71,8 @@ namespace BLIB {
 			Keyboard::State key_state = keyboard->GetState();
 			Mouse::State mouse_state = mouse->GetState();
 			
-			mouse_pos = { static_cast<float>(mouse_state.x), static_cast<float>(mouse_state.y) };
-			if (mouse_state.positionMode == Mouse::MODE_ABSOLUTE) { mouse_pos = window::screen_to_local(mouse_pos); }
+			mouse_pos = { static_cast<float>(mouse_state.x), window::size().y - static_cast<float>(mouse_state.y) };
+			//if (mouse_state.positionMode == Mouse::MODE_ABSOLUTE) { mouse_pos = window::screen_to_local(mouse_pos); }
 
 			mouse_scroll = mouse_state.scrollWheelValue - mouse_scroll_value;
 			if (reset_scroll_value) {
@@ -100,6 +102,11 @@ namespace BLIB {
 			_release = old & ~_state;
 		}
 
+		void wm_char(wchar_t c) {
+			if		(c == '\b') typing_buffer.pop_back();
+			else if (c != '\r') typing_buffer += c;
+		}
+
 		bool mouse_locked()	{ return mouse_lock; }
 		void set_mouse_locked(bool locked) { 
 			if (mouse_lock == locked) return;
@@ -116,5 +123,7 @@ namespace BLIB {
 		keymask state()   { return _state; }
 		keymask trigger() { return _trigger; }
 		keymask release() { return _release; }
+
+		string& get_typing_buffer() { return typing_buffer; }
 	}
 }

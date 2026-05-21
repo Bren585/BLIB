@@ -18,17 +18,17 @@ namespace BLIB {
 			virtual ~entity() = default;
 
 			/* Collision Markers */
-			virtual void on_floored()	{}
-			virtual void on_walled()	{}
-			virtual void on_ceiled()	{}
+			virtual void on_floored	() {}
+			virtual void on_walled	() {}
+			virtual void on_ceiled	() {}
 
-			void floor(bool state = true)	{ on_floor	= state; on_floored(); }
-			void wall(bool state = true)	{ on_wall	= state; on_walled(); }
-			void ceil(bool state = true)	{ on_ceil	= state; on_ceiled(); }
+			void floor	(bool state = true)	{ if (state && !on_floor	) { on_floored	();	} on_floor	= state; }
+			void wall	(bool state = true)	{ if (state && !on_wall		) { on_walled	();	} on_wall	= state; }
+			void ceil	(bool state = true)	{ if (state && !on_ceil		) { on_ceiled	();	} on_ceil	= state; }
 
-			bool floored()	const { return on_floor; }
-			bool walled()	const { return on_wall; }
-			bool ceiled()	const { return on_ceil; }
+			bool floored() const { return on_floor; }
+			bool walled	() const { return on_wall;	}
+			bool ceiled	() const { return on_ceil;	}
 
 			/* Render */
 			virtual void render(render_settings settings) const {}
@@ -48,13 +48,14 @@ namespace BLIB {
 		protected:
 			/* Globals */
 			static inline V gravity = V{};
-			static inline V tvel	= V{D3D10_FLOAT32_MAX};
+			static inline V tvel	= V{FLT_MAX};
 
 			/* Physics */
 			V		vel;
 			A		avel;
 			V		svel;
 			float	weight;
+			float	drag;
 
 		public:
 			virtual ~entity() = default;
@@ -66,19 +67,21 @@ namespace BLIB {
 			static V get_global_gravity() { return gravity; }
 
 			/* Constructors */
-			entity() : vel(), avel(), svel(), weight(1) {}
-			entity(const entity<V, A>& e) : vel(e.vel), avel(e.avel), svel(e.svel), weight(e.weight) {}
+			entity() : vel(), avel(), svel(), weight(1), drag(0) {}
+			entity(const entity<V, A>& e) : vel(e.vel), avel(e.avel), svel(e.svel), weight(e.weight), drag(e.drag) {}
 
 			/* Getters + Setters */
 			V		get_vel() const { return vel;		}
 			V		get_svl() const { return svel;		}
 			A		get_avl() const { return avel;		}
 			float	get_wgt() const { return weight;	}
+			float	get_drg() const { return drag;		}	
 
 			void set_vel(V		v) { vel	= v; }
 			void set_svl(V		s) { svel	= s; } 
 			void set_avl(A		a) { avel	= a; }
 			void set_wgt(float  w) { weight = w; }
+			void set_drg(float	d) { drag	= clamp(0, d, 1); }
 
 			void add_vel(V		d) { vel	+= d; }
 			void add_svl(V		d) { svel	+= d; }
@@ -95,6 +98,7 @@ namespace BLIB {
 			V&		imgui_get_svl() { return svel; }
 			A&		imgui_get_avl() { return avel; }
 			float&	imgui_get_wgt() { return weight; }
+			float&	imgui_get_drg() { return drag; }
 #endif
 
 		};
@@ -111,6 +115,8 @@ namespace BLIB {
 			entity(const object& o)		: FLAT_BASE(),	object(o)		{}
 			entity(const entity& e)		: FLAT_BASE(e),	object(e)		{}
 
+			virtual ~entity() = default;
+
 			entity operator=(const entity& e) { object::operator=(e); vel = e.vel; avel = e.avel; weight = e.weight; return e; }
 			object operator=(const object& o) { return object::operator=(o); }
 
@@ -122,7 +128,7 @@ namespace BLIB {
 
 			/* Update */
 			inline virtual void _update(float dt) override { 
-				vel = clamp(-tvel, vel + (gravity * weight * dt), tvel); 
+				vel = clamp(-tvel, (vel + (gravity * weight * dt)) * (1 - drag * dt), tvel); 
 				pos += vel * dt; 
 				//scale *= svel * dt;
 				angle += avel * dt; 
@@ -169,7 +175,10 @@ namespace BLIB {
 			const collider* peek_collider	() const				override { return object::peek_collider();	}
 			collider*		get_collider	()						override { return object::get_collider();	}
 
-			operator const object () { return *this; }
+			texture_animator& get_animator	()								 { return object::peek_animator();	}
+
+			operator const object () const { return *this; }
+			const object* obj() const { return this; }
 		};
 
 	}
@@ -184,6 +193,8 @@ namespace BLIB {
 			entity(const object& o) : FULL_BASE(),  object(o) {}
 			entity(const entity& e) : FULL_BASE(e), object(e) {}
 
+			virtual ~entity() = default;
+
 			entity operator=(const entity& e) { object::operator=(e); vel = e.vel; avel = e.avel; weight = e.weight; return e; }
 			object operator=(const object& o) { return object::operator=(o); }
 
@@ -195,7 +206,7 @@ namespace BLIB {
 
 			/* Update */
 			inline virtual void _update(float dt) override { 
-				vel = clamp(-tvel, vel + (gravity * weight * dt), tvel); 
+				vel = clamp(-tvel, (vel + (gravity * weight * dt)) * (1 - drag * dt), tvel);
 				object::add_pos(vel * dt); 
 				object::mlt_scl(((svel * dt) + float3(1.0f, 1.0f, 1.0f)));
 				object::add_ang(avel * dt); 
@@ -250,7 +261,8 @@ namespace BLIB {
 
 			//bool ray_collision(const float3& origin, const float3& ray, float3* out_int_point, float3* out_int_normal, bool any_hit = false) const { return object::ray_collision(origin, ray, out_int_point, out_int_normal, any_hit); }
 		
-			operator const object() { return *this; }
+			operator const object() const { return *this; }
+			const object* obj() const { return this; }
 		};
 	}
 }

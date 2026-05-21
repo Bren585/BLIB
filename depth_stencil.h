@@ -21,5 +21,7 @@ namespace BLIB {
 		ID3D11DepthStencilState* get(state state);
 
 		void set(state state = DEFAULT);
+
+		void release_all();
 	}
 }

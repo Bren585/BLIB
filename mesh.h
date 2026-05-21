@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "materials.h"
+#include "skinning_mode.h"
 
 #define MAX_BONE_INF 4
 
@@ -63,18 +64,28 @@ namespace BLIB {
 	protected:
 		mutable Microsoft::WRL::ComPtr<ID3D11Buffer>		vertex_buffer;
 		mutable Microsoft::WRL::ComPtr<ID3D11Buffer>		index_buffer;
-		//Microsoft::WRL::ComPtr<ID3D11Buffer>				bone_buffer;
-		//Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	bone_srv;
+#ifdef SKIN_GPU
+		Microsoft::WRL::ComPtr<ID3D11Buffer>				bone_buffer;
+#endif
 
 	private:
 		mutable bool unwrapped = false;
 		mutable std::vector<triangle> triangle_mesh;
-
 		void unwrap_triangles() const;
+
+		mutable bool bone_transform_vector_prepped = false;
+		mutable std::vector<matrix> scratch_bone_transforms;
+
+		mutable bool bone_normal_vector_prepped = false;
+		mutable std::vector<matrix> scratch_bone_normals;
+
+		mutable bool vertex_vector_prepped = false;
+		mutable std::vector<vertex> scratch_vertices;
+
 	public:
 		ID3D11Buffer* const* get_vertices()	const { return vertex_buffer.GetAddressOf(); }
 		ID3D11Buffer* get_indices()	const { return index_buffer.Get(); }
-		//ID3D11ShaderResourceView* const* get_bones()		const { return bone_srv.GetAddressOf(); }
+		ID3D11Buffer* const* get_bone_buffer() const { return bone_buffer.GetAddressOf(); }
 
 		struct subset {
 			uint64_t	material_unique_id		{ 0 };
@@ -94,7 +105,8 @@ namespace BLIB {
 
 		skeleton bind_pose;
 
-		float4x4 default_global_transform	= MATRIX_ID;
+		float4x4 default_global_transform			= MATRIX_ID;
+		float4x4 inverse_default_global_transform	= MATRIX_ID;
 
 		float3 minimum;
 		float3 maximum;
@@ -103,9 +115,12 @@ namespace BLIB {
 
 		void create_buffers();
 		void update_buffers(const std::vector<vertex>& vertices) const;
-		//void update_bone_buffer(std::vector<float4x4>& bone_transforms, bool dump = false) const;
+		void update_bone_buffer(std::vector<float4x4>& bone_transforms) const;
 
-		const std::vector<triangle>& peek_triangles() const { if (!unwrapped) { unwrap_triangles(); } return triangle_mesh; }
+		const std::vector<triangle>& peek_triangles		() const { if (!unwrapped)						{ unwrap_triangles();																				} return triangle_mesh;				}
+		std::vector<matrix>& get_scratch_bone_transforms() const { if (!bone_transform_vector_prepped)	{ scratch_bone_transforms.resize(bind_pose.bones.size());	bone_transform_vector_prepped	= true; } return scratch_bone_transforms;	}
+		std::vector<matrix>& get_scratch_bone_normals	() const { if (!bone_normal_vector_prepped)		{ scratch_bone_normals.resize(bind_pose.bones.size());		bone_normal_vector_prepped		= true;	} return scratch_bone_normals;		}
+		std::vector<vertex>& get_scratch_vertices		() const { if (!vertex_vector_prepped)			{ scratch_vertices.resize(vertices.size());					vertex_vector_prepped			= true;	} return scratch_vertices;			}
 
 		uint32_t ray_collision(const transform& model_transform, const float3& origin, const float3& ray, float3* out_int_point, float3* out_int_normal, bool any_hit = false) const;
 

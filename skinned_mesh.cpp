@@ -2,6 +2,7 @@
 #include "skinned_mesh.h"
 #include "shader.h"
 #include "texture.h"
+#include "constant_buffer_indices.h"
 
 using namespace BLIB;
 using std::vector;
@@ -38,7 +39,8 @@ inline DirectX::XMFLOAT4 to_xmfloat4(const FbxDouble4& fbxdouble4) {
 // Constructor
 
 skinned_mesh::skinned_mesh(const char* fbx_filename, bool triangulate, coordinate_system sys) {
-
+	fbx_name = string(fbx_filename).get_filename().replace_ext("");
+	fbx_name[(int)fbx_name.length() - 1] = '_';
 	coord_sys = sys;
 
 	FbxManager* fbx_manager{ FbxManager::Create() };
@@ -86,7 +88,24 @@ skinned_mesh::skinned_mesh(const char* fbx_filename, bool triangulate, coordinat
 
 // Fetching FBX stuff
 
+float4x4 build_relative_transform(FbxNode* node, const FbxNode* root) {
+	FbxAMatrix transform = node->EvaluateLocalTransform();
+
+	for (FbxNode* parent = node->GetParent(); parent != root; parent = parent->GetParent()) {
+		transform = parent->EvaluateLocalTransform() * transform;
+	}
+
+	FbxAMatrix geometric; 
+	geometric.SetT(node->GetGeometricTranslation(FbxNode::eSourcePivot));
+	geometric.SetR(node->GetGeometricRotation(FbxNode::eSourcePivot));
+	geometric.SetS(node->GetGeometricScaling(FbxNode::eSourcePivot));
+
+	return to_xmfloat4x4(transform * geometric);
+}
+
 void skinned_mesh::fetch_meshes(FbxScene* fbx_scene) {
+	FbxNode* root_node = fbx_scene->GetRootNode();
+
 	for (const scene_view::node& node : scene_view.nodes) {
 		if (node.attribute != FbxNodeAttribute::EType::eMesh) continue;
 
@@ -98,10 +117,20 @@ void skinned_mesh::fetch_meshes(FbxScene* fbx_scene) {
 		mesh.name = fbx_node->GetName();
 		mesh.node_index = scene_view.index_of(mesh.unique_id);
 
+		mesh.default_global_transform = to_xmfloat4x4(fbx_node->EvaluateGlobalTransform());//build_relative_transform(fbx_node, root_node);
+		//DirectX::XMStoreFloat4x4(&mesh.inverse_default_global_transform, DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&mesh.default_global_transform)));
+
 		vector<vector<bone_inf>> bones;
 		fetch_bones(fbx_mesh, bones);
 
 		fetch_skeleton(fbx_mesh, mesh.bind_pose);
+
+		if (mesh.bind_pose.bones.empty()) {
+			fetch_attachment(fbx_node, mesh.bind_pose);
+			if (mesh.bind_pose.bones.empty()) {
+				fallback_skeleton(mesh.bind_pose);
+			}
+		}
 
 		vector<mesh::subset>& subsets{ mesh.subsets };
 		const int material_count{ fbx_mesh->GetNode()->GetMaterialCount() };
@@ -259,7 +288,10 @@ void skinned_mesh::fetch_materials(string fbx_filename, FbxScene* fbx_scene) {
 					albedo.a = 1.0f;
 
 					const FbxFileTexture* fbx_texture{ fbx_property.GetSrcObject<FbxFileTexture>() };
-					if (fbx_texture) { material.textures[texture_type::texture_map] = std::make_unique<material_texture_file>(fbx_filepath + fbx_texture->GetRelativeFileName()); }
+					if (fbx_texture) { 
+						const string texture_filename = fbx_texture->GetFileName();
+						material.textures[texture_type::texture_map] = std::make_unique<material_texture_file>(texture_filename.get_filename()); 
+					}
 					else { material.textures[texture_type::texture_map] = std::make_unique<material_texture_dummy>(albedo); }
 				}
 			}
@@ -324,13 +356,19 @@ void skinned_mesh::fetch_materials(string fbx_filename, FbxScene* fbx_scene) {
 				find_property(fbx_material, fbx_property, attempts);
 				if (fbx_property.IsValid()) {
 					const FbxFileTexture* fbx_texture{ fbx_property.GetSrcObject<FbxFileTexture>() };
-					if (fbx_texture) { material.textures[texture_type::normal_map] = std::make_unique<material_texture_file>(fbx_filepath + fbx_texture->GetRelativeFileName()); }
+					if (fbx_texture) { 
+						const string texture_filename = fbx_texture->GetFileName();
+						material.textures[texture_type::normal_map] = std::make_unique<material_texture_file>(texture_filename.get_filename()); 
+					}
 				}
 				else {
 					attempts = { FbxSurfaceMaterial::sBump, "Bump" };
 					find_property(fbx_material, fbx_property, attempts);
 					const FbxFileTexture* fbx_texture{ fbx_property.GetSrcObject<FbxFileTexture>() };
-					if (fbx_texture) {  material.textures[texture_type::normal_map] = std::make_unique<material_texture_height>(fbx_filepath + fbx_texture->GetRelativeFileName()); }
+					if (fbx_texture) { 
+						const string texture_filename = fbx_texture->GetFileName();
+						material.textures[texture_type::normal_map] = std::make_unique<material_texture_height>(texture_filename.get_filename());
+					}
 				}
 			}
 
@@ -343,10 +381,21 @@ void skinned_mesh::fetch_materials(string fbx_filename, FbxScene* fbx_scene) {
 					emissive.r = static_cast<float>(fbx_emissive[0]);
 					emissive.g = static_cast<float>(fbx_emissive[1]);
 					emissive.b = static_cast<float>(fbx_emissive[2]);
-					emissive.a = 1.0f;
+
+					{
+						FbxProperty factor_property;
+						vector<string> factor_attempts{ FbxSurfaceMaterial::sEmissiveFactor, "EmissiveFactor", "EmissiveIntensity", "EmissionStrength" };
+						if (factor_property.IsValid()) {
+							emissive.a = static_cast<float>(factor_property.Get<FbxDouble>());
+						}
+						else emissive.a = 0.0f;
+					}
 
 					const FbxFileTexture* fbx_texture{ fbx_property.GetSrcObject<FbxFileTexture>() };
-					if (fbx_texture) { material.textures[texture_type::emissive] = std::make_unique<material_texture_file>(fbx_filepath + fbx_texture->GetRelativeFileName()); }
+					if (fbx_texture) { 
+						const string texture_filename = fbx_texture->GetFileName();
+						material.textures[texture_type::emissive] = std::make_unique<material_texture_file>(texture_filename.get_filename()); 
+					}
 					else { material.textures[texture_type::emissive] = std::make_unique<material_texture_dummy>(emissive); }
 				}
 			}
@@ -409,13 +458,48 @@ void skinned_mesh::fetch_skeleton(const FbxMesh* fbx_mesh, skeleton& bind_pose) 
 	//bind_pose.compute_all_globals();
 }
 
-void skinned_mesh::fetch_animations(FbxScene* fbx_scene, vector<animation>& animation_clips, float sampling_rate) {
+void skinned_mesh::fetch_attachment(FbxNode* fbx_node, skeleton& bind_pose) {
+	for (FbxNode* parent = fbx_node->GetParent(); parent; parent = parent->GetParent()) {
+		FbxNodeAttribute* attr = parent->GetNodeAttribute();
+		if (!attr) continue;
+		if (attr->GetAttributeType() == FbxNodeAttribute::eSkeleton) {
+			skeleton::bone& bone{ bind_pose.bones.emplace_back() };
+			bone.name = parent->GetName();
+			bone.unique_id = parent->GetUniqueID();
+			bone.parent_index = bind_pose.index_of(parent->GetParent()->GetUniqueID());
+			bone.node_index = scene_view.index_of(bone.unique_id);
+
+			FbxAMatrix mesh_global = fbx_node->EvaluateGlobalTransform();
+			FbxAMatrix parent_global = parent->EvaluateGlobalTransform();
+
+			bone.offset_transform = to_xmfloat4x4(parent_global.Inverse() * mesh_global);
+			break;
+		}
+	}
+}
+
+void skinned_mesh::fallback_skeleton(skeleton& bind_pose) {
+	skeleton::bone& bone{ bind_pose.bones.emplace_back() };
+	bone.name = "default_bone";
+	bone.unique_id = 0;
+	bone.parent_index = -1;
+	bone.node_index = 0;//scene_view.index_of(0);
+	bone.offset_transform = matrix_id;
+}
+
+void skinned_mesh::fetch_animations(FbxScene* fbx_scene, std::unordered_map<string, animation>& animation_clips, float sampling_rate) {
 	FbxArray<FbxString*> animation_stack_names;
 	fbx_scene->FillAnimStackNameArray(animation_stack_names);
 	const int animation_stack_count{ animation_stack_names.GetCount() };
 	for (int animation_stack_index = 0; animation_stack_index < animation_stack_count; animation_stack_index++) {
-		animation& animation_clip{ animation_clips.emplace_back() };
-		animation_clip.name = animation_stack_names[animation_stack_index]->Buffer();
+		string name = animation_stack_names[animation_stack_index]->Buffer();
+		auto emplace_attempt = animation_clips.try_emplace(name);
+		if (!emplace_attempt.second) { // Duplicate animation
+			delete animation_stack_names[animation_stack_index];
+			continue; 
+		}
+		animation& animation_clip{ emplace_attempt.first->second };
+		animation_clip.name = name;
 
 		FbxAnimStack* animation_stack{ fbx_scene->FindMember<FbxAnimStack>(animation_clip.name) };
 		fbx_scene->SetCurrentAnimationStack(animation_stack);
@@ -471,24 +555,24 @@ void skinned_mesh::create_com_objects() {
 			{"NORMAL",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{"TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{"TANGENT",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			//{"WEIGHTS",	0, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT },
-			//{"BONES",		0, DXGI_FORMAT_R32G32B32A32_UINT,	0, D3D11_APPEND_ALIGNED_ELEMENT },
+			{"TEXCOORD",	1, DXGI_FORMAT_R32G32B32A32_FLOAT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{"TEXCOORD",	2, DXGI_FORMAT_R32G32B32A32_UINT,	0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	create_shaders("default_full");
+	create_shaders("skinned_full");
 }
 
 // Public 
 
 bool skinned_mesh::append_animations(string animation_filename, float sampling_rate) {
-	string cereal_filename = animation_filename.replace_ext("cereal");
-	if (cereal_filename.file_exists()) {
-		vector<animation> new_animations;
-		UNCEREAL(cereal_filename, new_animations);
-		while (new_animations.size()) { animations.push_back(*new_animations.rbegin()); new_animations.pop_back(); }
+	string animation_filepath = animation_filename.get_filepath();
+	string cereal_filename = animation_filename.get_filename().replace_ext("cereal");
+	string full_cereal_filename = animation_filepath + fbx_name + cereal_filename;
+	std::unordered_map<string, animation> new_animations;
+	if (full_cereal_filename.file_exists()) {
+		UNCEREAL(full_cereal_filename, new_animations);
 	}
 	else {
-
 		FbxManager* fbx_manager{ FbxManager::Create() };
 		FbxScene* fbx_scene{ FbxScene::Create(fbx_manager, "") };
 
@@ -499,11 +583,12 @@ bool skinned_mesh::append_animations(string animation_filename, float sampling_r
 		import_status = fbx_importer->Import(fbx_scene);
 		_ASSERT_EXPR_A(import_status, fbx_importer->GetStatus().GetErrorString());
 
-		fetch_animations(fbx_scene, animations, sampling_rate);
+		fetch_animations(fbx_scene, new_animations, sampling_rate);
 
 		fbx_manager->Destroy();
-		CEREAL(cereal_filename, animations);
+		CEREAL(full_cereal_filename, new_animations);
 	}
+	animations.merge(new_animations);
 	return true;
 }
 
@@ -539,52 +624,36 @@ uint32_t skinned_mesh::ray_collision(const transform& model_transform, const flo
 
 void skinned_mesh::render(const float4x4& world, const color& material_color) const {
 	device::context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	constants data{ world, material_color };
+	constants data{};
+	data.material_color = material_color;
+#ifdef SKIN_CPU
+	DirectX::XMStoreFloat4x4(&data.world, DirectX::XMLoadFloat4x4(&world) * DirectX::XMLoadFloat4x4(&coordinate_system_transforms[coord_sys]));
 	device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
-	device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
+#else
+	if (is_animating()) {
+		DirectX::XMStoreFloat4x4(&data.world, DirectX::XMLoadFloat4x4(&world) * DirectX::XMLoadFloat4x4(&coordinate_system_transforms[coord_sys]));
+		device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
+	}
+#endif
+	device::context()->VSSetConstantBuffers(FULL_VS_CB, 1, constant_buffer.GetAddressOf());
 	uint32_t stride{ sizeof(mesh::vertex) };
 	uint32_t offset{ 0 };
-	//const animation::keyframe* animation_keyframe{ get_keyframe() };
 
 	for (const mesh& mesh : meshes) {
 
-		//using namespace DirectX;
-		//
-		//
-		//XMStoreFloat4x4(
-		//	&data.world,
-		//	XMLoadFloat4x4(&coordinate_system_transforms[coord_sys]) *
-		//	XMLoadFloat4x4(animation_keyframe ? &animation_keyframe->at(mesh.node_index).global_transform : &mesh.default_global_transform) *
-		//	XMLoadFloat4x4(&world)
-		//);
-		//
-		//const size_t bone_count{ mesh.bind_pose.bones.size() };
-		//vector<float4x4> bone_transforms;
-		//bone_transforms.resize(bone_count);
-		//for (int bone_index = 0; bone_index < bone_count; bone_index++) {
-		//	const skeleton::bone& bone{ mesh.bind_pose.bones.at(bone_index) };
-		//	if (animation_keyframe) {
-		//		const animation::keyframe::node* bone_animation{ &animation_keyframe->at(bone.node_index) };
-		//		XMStoreFloat4x4(&bone_transforms[bone_index],
-		//			XMMatrixTranspose( // Align data for shader
-		//				XMLoadFloat4x4(&bone.offset_transform) *
-		//				XMLoadFloat4x4(&bone_animation->global_transform) *
-		//				XMMatrixInverse(nullptr, XMLoadFloat4x4(&mesh.default_global_transform))
-		//			)
-		//		);
-		//	}
-		//	else {
-		//		XMStoreFloat4x4(&bone_transforms[bone_index], XMMatrixIdentity());
-		//	}
-		//}
-
 		device::context()->IASetVertexBuffers(0, 1, mesh.get_vertices(), &stride, &offset);
 		device::context()->IASetIndexBuffer(mesh.get_indices(), DXGI_FORMAT_R32_UINT, 0);
-		//mesh.update_bone_buffer(bone_transforms);
+
+#ifdef SKIN_GPU
+		device::context()->VSSetConstantBuffers(BONE_CB, 1, mesh.get_bone_buffer());
+		if (!is_animating()) {
+			DirectX::XMStoreFloat4x4(&data.world, DirectX::XMLoadFloat4x4(&mesh.default_global_transform) * DirectX::XMLoadFloat4x4(&world) * DirectX::XMLoadFloat4x4(&coordinate_system_transforms[coord_sys]));
+			device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
+		}
+#endif
 
 		for (const mesh::subset& subset : mesh.subsets)
 		{
-			//device::context()->VSSetShaderResources(4, 1, mesh.get_bones());
 			const material& material{ materials.at(subset.material_unique_id) };
 			material.bind(0);
 			device::context()->DrawIndexed(subset.index_count, subset.start_index_location, 0);

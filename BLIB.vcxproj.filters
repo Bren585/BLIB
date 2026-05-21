@@ -200,6 +200,12 @@
     <ClCompile Include="billboard.cpp">
       <Filter>source\models</Filter>
     </ClCompile>
+    <ClCompile Include="particles.cpp">
+      <Filter>source\models</Filter>
+    </ClCompile>
+    <ClCompile Include="object.cpp">
+      <Filter>source\game objects</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -415,6 +421,18 @@
     <ClInclude Include="quaternion.h">
       <Filter>math</Filter>
     </ClInclude>
+    <ClInclude Include="particles.h">
+      <Filter>headers\models</Filter>
+    </ClInclude>
+    <ClInclude Include="texture_animation.h">
+      <Filter>headers\sprites</Filter>
+    </ClInclude>
+    <ClInclude Include="lighting_constants.h">
+      <Filter>shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="skinning_mode.h">
+      <Filter>headers\models</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="default_flat_vs.hlsl">
@@ -465,6 +483,18 @@
     <FxCompile Include="uv_test_ps.hlsl">
       <Filter>shaders\ps</Filter>
     </FxCompile>
+    <FxCompile Include="skinned_full_vs.hlsl">
+      <Filter>shaders\vs</Filter>
+    </FxCompile>
+    <FxCompile Include="skinned_shadow_vs.hlsl">
+      <Filter>shaders\vs</Filter>
+    </FxCompile>
+    <FxCompile Include="variable_flat_gs.hlsl">
+      <Filter>shaders\gs</Filter>
+    </FxCompile>
+    <FxCompile Include="variable_flat_vs.hlsl">
+      <Filter>shaders\vs</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="flat_common.hlsli">
@@ -504,6 +534,15 @@
       <Filter>shaders\hlsli</Filter>
     </None>
     <None Include="flat_gs.hlsli">
+      <Filter>shaders\hlsli</Filter>
+    </None>
+    <None Include="constant_buffer_indices.h">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="skinned_vs.hlsli">
+      <Filter>shaders\hlsli</Filter>
+    </None>
+    <None Include="variable_flat_gs.hlsli">
       <Filter>shaders\hlsli</Filter>
     </None>
   </ItemGroup>

@@ -6,13 +6,14 @@ namespace BLIB {
 	namespace window {
 
 		HWND		hwnd;
-		window_mode _mode = DEFAULT_WINDOW_MODE;
-		float2		_size = { DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT };
+		window_mode _mode			= DEFAULT_WINDOW_MODE;
+		float2		_size			= { DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT };
+		float2		_queued_size	= { 0, 0 };
 		string		_name;
 
-		Microsoft::WRL::ComPtr<IDXGISwapChain>* swap_chain = nullptr;
+		IDXGISwapChain* swap_chain = nullptr;
 
-		void create(HINSTANCE instance, int cmd_show, WNDPROC window_procedure, const wchar_t* name, Microsoft::WRL::ComPtr<IDXGISwapChain>* swap_chain_ptr) {
+		void create(HINSTANCE instance, int cmd_show, WNDPROC window_procedure, const wchar_t* name, IDXGISwapChain* swap_chain_ptr) {
 			_name = name;
 			swap_chain = swap_chain_ptr;
 
@@ -40,15 +41,28 @@ namespace BLIB {
 
 		HWND get() { return hwnd; }
 
-		void resize(float2 size) {
-			_size = size;
+		void set_size(float2 size) {
+			_queued_size = size;
+
+			RECT rc{ 0, 0, static_cast<LONG>(size.x), static_cast<LONG>(size.y) };
+			AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
+			SetWindowPos(hwnd, nullptr, 0, 0, rc.right - rc.left, rc.bottom - rc.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		}
+
+		void internal_update(float2 size) {
+			_queued_size = size;
+		}
+
+		void resolve_resize() {
+			if (!_queued_size) return;
+			_size = _queued_size;
+			_queued_size = { 0, 0 };
 
 			render_target::unbind();
 			render_target::release_main();
-			swap_chain->Get()->ResizeBuffers(0, static_cast<UINT>(size.x), static_cast<UINT>(size.y), DXGI_FORMAT_UNKNOWN, 0);
-			render_target::resize_main(size, swap_chain->Get());
+			render_target::resize_main(_size);
 
-			manager::resize(size);
+			manager::resize(_size);
 		}
 
 		void rename(const wchar_t* name) { SetWindowTextW(hwnd, name); }
@@ -58,8 +72,8 @@ namespace BLIB {
 		void set_mode(window_mode new_mode) {
 			if (new_mode == _mode) { return; }
 
-			if		(new_mode	== fullscreen) { swap_chain->Get()->SetFullscreenState(TRUE, nullptr); }
-			else if (_mode		== fullscreen) { swap_chain->Get()->SetFullscreenState(FALSE, nullptr); }
+			if		(new_mode	== fullscreen) { swap_chain->SetFullscreenState(TRUE, nullptr); }
+			else if (_mode		== fullscreen) { swap_chain->SetFullscreenState(FALSE, nullptr); }
 
 			_mode = new_mode;
 		}

@@ -45,6 +45,7 @@ namespace BLIB {
 
 		void init();
 		void update();
+		void wm_char(wchar_t c);
 
 		bool mouse_locked();
 		void set_mouse_locked(bool locked);
@@ -61,6 +62,8 @@ namespace BLIB {
 		inline bool state	(keymask key) {return key & state	();}
 		inline bool trigger	(keymask key) {return key & trigger	();}
 		inline bool release	(keymask key) {return key & release	();}
+
+		string& get_typing_buffer();
 
 	}
 

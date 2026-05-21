@@ -8,4 +8,5 @@ namespace BLIB::debug::draw {
 	};
 
 	void push_to_screen(vertex vertices[], unsigned int vertex_count);
+	void uninit();
 }

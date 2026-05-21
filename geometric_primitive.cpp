@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "geometric_primitive.h"
 #include "texture.h"
+#include "constant_buffer_indices.h"
 
 using namespace BLIB;
 
@@ -28,7 +29,7 @@ void geometric_primitive::render(const float4x4& world, const color& material_co
 
 	constants data{ world, material_color };
 	device::context()->UpdateSubresource(constant_buffer.Get(), 0, 0, &data, 0, 0);
-	device::context()->VSSetConstantBuffers(0, 1, constant_buffer.GetAddressOf());
+	device::context()->VSSetConstantBuffers(FULL_VS_CB, 1, constant_buffer.GetAddressOf());
 
 	materials.at(0).bind(0);
 
@@ -256,8 +257,8 @@ sphere::sphere(int edges) : geometric_primitive() {
 	vertices.resize(vertex_count);
 	indices.resize(index_count);
 
-	vertices[0] = { { 0.0f, -0.5f, 0.0f }, { 0, -1, 0 }, { 0, 0 }, { 1, 0, 0,  1 } }; // bottom
-	vertices[1] = { { 0.0f,  0.5f, 0.0f }, { 0,  1, 0 }, { 0, 0 }, { 1, 0, 0, -1 } }; // top
+	vertices[0] = { { 0.0f, -0.5f, 0.0f }, { 0, -1, 0 }, { 0.5f, 1.0f }, { 1, 0, 0,  1 } }; // bottom
+	vertices[1] = { { 0.0f,  0.5f, 0.0f }, { 0,  1, 0 }, { 0.5f, 0.0f }, { 1, 0, 0, -1 } }; // top
 
 	int vi = 2; // vertices index
 	int ii = 0; // indices index
@@ -270,6 +271,9 @@ sphere::sphere(int edges) : geometric_primitive() {
 		float cax2 = cosf(ax2);
 		float sax1 = sinf(ax1);
 		float sax2 = sinf(ax2);
+
+		float u1 = (float)(hedge	) / (float)edges;
+		float u2 = (float)(hedge + 1) / (float)edges;
 
 		for (int vedge = 0; vedge < edges - 1; vedge++) {
 			if (vedge == 0 /* Bottom */) {
@@ -284,8 +288,10 @@ sphere::sphere(int edges) : geometric_primitive() {
 				float z1y2 =  say2 * sax1;
 				float z2y2 =  say2 * sax2;
 
-				vertices[vi++] = { { x1y2 / 2.0f, y2 / 2.0f, z1y2 / 2.0f }, { x1y2, y2, z1y2 }, { 0, 0 }, { -sax1, 0, cax1, 1 } }; // 0
-				vertices[vi++] = { { x2y2 / 2.0f, y2 / 2.0f, z2y2 / 2.0f }, { x2y2, y2, z2y2 }, { 0, 0 }, { -sax2, 0, cax2, 1 } }; // 1    0 > 1 > bottom 
+				float v2 = 1.0f - (float)(vedge + 1) / (float)edges;
+
+				vertices[vi++] = { { x1y2 / 2.0f, y2 / 2.0f, z1y2 / 2.0f }, { x1y2, y2, z1y2 }, { u1, v2 }, { -sax1, 0, cax1, 1 } }; // 0
+				vertices[vi++] = { { x2y2 / 2.0f, y2 / 2.0f, z2y2 / 2.0f }, { x2y2, y2, z2y2 }, { u2, v2 }, { -sax2, 0, cax2, 1 } }; // 1    0 > 1 > bottom 
 
 				indices[ii++] = sv + 0;
 				indices[ii++] = sv + 1;
@@ -303,8 +309,10 @@ sphere::sphere(int edges) : geometric_primitive() {
 				float z1y1 =  say1 * sax1;
 				float z2y1 =  say1 * sax2;
 
-				vertices[vi++] = { { x1y1 / 2.0f, y1 / 2.0f, z1y1 / 2.0f }, { x1y1, y1, z1y1 }, { 0, 0 }, { -sax1, 0, cax1, 1 } }; // 0
-				vertices[vi++] = { { x2y1 / 2.0f, y1 / 2.0f, z2y1 / 2.0f }, { x2y1, y1, z2y1 }, { 0, 0 }, { -sax2, 0, cax2, 1 } }; // 1    1 > 0 > top 
+				float v1 = 1.0f - (float)(vedge) / (float)edges;
+
+				vertices[vi++] = { { x1y1 / 2.0f, y1 / 2.0f, z1y1 / 2.0f }, { x1y1, y1, z1y1 }, { u1, v1 }, { -sax1, 0, cax1, 1 } }; // 0
+				vertices[vi++] = { { x2y1 / 2.0f, y1 / 2.0f, z2y1 / 2.0f }, { x2y1, y1, z2y1 }, { u2, v1 }, { -sax2, 0, cax2, 1 } }; // 1    1 > 0 > top 
 
 				indices[ii++] = sv + 1;
 				indices[ii++] = sv + 0;
@@ -332,10 +340,13 @@ sphere::sphere(int edges) : geometric_primitive() {
 				//float w1 = (y1 < 0) ? 1.0f : 1.0f;
 				//float w2 = (y2 < 0) ? 1.0f : 1.0f;
 
-				vertices[vi++] = { { x1y1 / 2.0f, y1 / 2.0f, z1y1 / 2.0f }, { x1y1, y1, z1y1 }, { 0, 0 }, { -sax1, 0, cax1, 1 } }; // 0   1 ---- 3
-				vertices[vi++] = { { x1y2 / 2.0f, y2 / 2.0f, z1y2 / 2.0f }, { x1y2, y2, z1y2 }, { 0, 0 }, { -sax1, 0, cax1, 1 } }; // 1   |   ,' |
-				vertices[vi++] = { { x2y1 / 2.0f, y1 / 2.0f, z2y1 / 2.0f }, { x2y1, y1, z2y1 }, { 0, 0 }, { -sax2, 0, cax2, 1 } }; // 2   | ,'   |
-				vertices[vi++] = { { x2y2 / 2.0f, y2 / 2.0f, z2y2 / 2.0f }, { x2y2, y2, z2y2 }, { 0, 0 }, { -sax2, 0, cax2, 1 } }; // 3   0 ---- 2
+				float v1 = 1.0f - (float)(vedge		) / (float)edges;
+				float v2 = 1.0f - (float)(vedge + 1	) / (float)edges;
+
+				vertices[vi++] = { { x1y1 / 2.0f, y1 / 2.0f, z1y1 / 2.0f }, { x1y1, y1, z1y1 }, { u1, v1 }, { -sax1, 0, cax1, 1 } }; // 0   1 ---- 3
+				vertices[vi++] = { { x1y2 / 2.0f, y2 / 2.0f, z1y2 / 2.0f }, { x1y2, y2, z1y2 }, { u1, v2 }, { -sax1, 0, cax1, 1 } }; // 1   |   ,' |
+				vertices[vi++] = { { x2y1 / 2.0f, y1 / 2.0f, z2y1 / 2.0f }, { x2y1, y1, z2y1 }, { u2, v1 }, { -sax2, 0, cax2, 1 } }; // 2   | ,'   |
+				vertices[vi++] = { { x2y2 / 2.0f, y2 / 2.0f, z2y2 / 2.0f }, { x2y2, y2, z2y2 }, { u2, v2 }, { -sax2, 0, cax2, 1 } }; // 3   0 ---- 2
 
 				indices[ii++] = sv + 3;
 				indices[ii++] = sv + 2;

@@ -79,5 +79,8 @@ namespace BLIB {
 			current_state = state;
 			device::context()->RSSetState(get(state));
 		}
+
+		void release_all() { rasterizer_states.clear(); }
+
 	}
 }

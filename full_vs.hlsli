@@ -1,7 +1,8 @@
 #include "full_common.hlsli"
 #include "inverse.hlsli"
 
-cbuffer CONSTANT_BUFFER : register(b0)
+#include "constant_buffer_indices.h"
+cbuffer CONSTANT_BUFFER : register(FULL_VS_CB)
 {
     row_major float4x4 world;
     float4 material_color;

@@ -19,17 +19,24 @@ namespace BLIB {
 		const float duration;
 
 	public:
-		transition_scene(generic::scene* to, generic::scene* from, int slot, transition t, float duration) : to_scene(to), from_scene(from), slot(slot), t(t), duration(duration) { assert(t != transition::none && (to || from)); to_scene->preserve(); from_scene->preserve(); }
-
-		void init() override {
-			if (to_scene)	{ to_scene_id	= to_scene->get_id();	}
-			if (from_scene) { from_scene_id = from_scene->get_id(); }
-
-			manager::unstage(to_scene_id);
-			manager::unstage(from_scene_id);
+		transition_scene(generic::scene* to, generic::scene* from, int slot, transition t, float duration) : to_scene(to), from_scene(from), slot(slot), t(t), duration(duration) {
+			assert(t != transition::none && (to || from)); 
+			if (to_scene) { 
+				to_scene->preserve(this); 
+				to_scene_id = to_scene->get_id();
+				manager::unstage(to_scene_id);
+			}
+			if (from_scene) { 
+				from_scene->preserve(this);
+				from_scene_id = from_scene->get_id();
+				manager::unstage(from_scene_id);
+			}
+			force_wake();
 		}
 
-		void update	(float elapsed_time)	override { if (timer > duration) { finish(); } }
+		void init() override {} // is not called
+
+		void update	(float elapsed_time)	override { if (timer > duration) { finish(); unpreserve(this); } }
 		void idle	(float elapsed_time)	override {}
 
 		void draw(render_settings) const override {
@@ -38,8 +45,12 @@ namespace BLIB {
 				if (to_scene) { to_scene->render(); }
 				break;
 			case transition::fade:
-				generic::scene* fade_scene = to_scene ? to_scene : from_scene;
-				fade_scene->tint.a = clamp(0.0f, timer / duration, 1.0f);
+				if (to_scene) {
+					to_scene->tint.a = clamp(0.0f, timer / duration, 1.0f);
+				}
+				else {
+					from_scene->tint.a = clamp(0.0f, 1 - timer / duration, 1.0f);
+				}
 
 				if (from_scene) { from_scene->render(); }
 				if (to_scene)	{ to_scene->render(); }
@@ -57,8 +68,8 @@ namespace BLIB {
 				break;
 			}
 
-			if (from_scene) { from_scene->unpreserve();				}
-			if (to_scene)	{ manager::stage(to_scene_id, slot);	}
+			if (from_scene) { from_scene->unpreserve(this);										}
+			if (to_scene)	{ to_scene	->unpreserve(this);  manager::stage(to_scene_id, slot); }
 		}
 
 	};
