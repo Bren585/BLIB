@@ -37,7 +37,7 @@ namespace BLIB {
 		void init() override {} // is not called
 
 		void update	(float elapsed_time)	override { if (timer > duration) { finish(); unpreserve(this); } }
-		void idle	(float elapsed_time)	override {}
+		void idle	(float elapsed_time)	override { finish(); BLIB::manager::unstage(get_id()); unpreserve(this); }
 
 		void draw(render_settings) const override {
 			switch (t) {

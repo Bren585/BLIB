@@ -39,8 +39,8 @@ namespace BLIB {
 				if (fade) {
 					fade_timer += elapsed_time;
 					if (fade_timer > fade_duration) { 
-						if (fade_in)	{ SEI->SetVolume(base_volume); }
-						else			{ if (on_fade_out == fade_stop) SEI->Stop(); else SEI->Pause(); }
+						if (fade == fade_in)	{ SEI->SetVolume(base_volume); }
+						else					{ if (on_fade_out == fade_stop) SEI->Stop(); else SEI->Pause(); }
 						fade = no_fade;
 					}
 					else {
@@ -181,7 +181,6 @@ namespace BLIB {
 			else {
 				auto track = tracks.find(instance);
 				if (track != tracks.end()) {
-					track->second.SEI->Stop();
 					track->second.fade = audio_instance::fade_out;
 					track->second.on_fade_out = audio_instance::fade_stop;
 					track->second.fade_duration = fade_time;
