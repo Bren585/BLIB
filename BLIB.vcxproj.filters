@@ -95,9 +95,6 @@
     <ClCompile Include="string.cpp">
       <Filter>independants\source</Filter>
     </ClCompile>
-    <ClCompile Include="audio.cpp">
-      <Filter>source\render settings</Filter>
-    </ClCompile>
     <ClCompile Include="blend.cpp">
       <Filter>source\render settings</Filter>
     </ClCompile>
@@ -205,6 +202,9 @@
     </ClCompile>
     <ClCompile Include="object.cpp">
       <Filter>source\game objects</Filter>
+    </ClCompile>
+    <ClCompile Include="audio.cpp">
+      <Filter>source</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

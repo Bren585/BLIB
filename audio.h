@@ -24,7 +24,7 @@ namespace BLIB {
 		};
 
 		void init();
-		void update();
+		void update(float elapsed_time);
 		void uninit();
 
 		void set_filepath(string path);
@@ -32,10 +32,10 @@ namespace BLIB {
 		void load		(string filename);
 		void unload		(string filename = L"");
 
-		int  play		(string filename, bool loop = false);
-		void pause		(int instance = all_tracks);
-		void resume		(int instance = all_tracks);
-		void stop		(int instance = all_tracks);
+		int  play		(string filename, float fade_time = 0.0f, bool loop = false);
+		void pause		(int instance = all_tracks, float fade_time = 0.0f);
+		void resume		(int instance = all_tracks, float fade_time = 0.0f);
+		void stop		(int instance = all_tracks, float fade_time = 0.0f);
 
 		bool is_looped	(int instance = all_tracks);
 		bool is_playing	(int instance = all_tracks);

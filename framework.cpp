@@ -165,7 +165,7 @@ namespace BLIB {
 
 	void update() {
 		input::update();
-		audio::update();
+		audio::update(delta_time);
 #ifdef _DEBUG
 		ImGui_ImplDX11_NewFrame();
 		ImGui_ImplWin32_NewFrame();

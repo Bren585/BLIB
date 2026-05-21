@@ -18,8 +18,39 @@ namespace BLIB {
 
 		struct audio_instance {
 		public:
-			string parent;
+			audio_source* parent;
 			std::unique_ptr<DirectX::SoundEffectInstance> SEI;
+			float fade_duration = 0;
+			float fade_timer = 0;
+			float base_volume = 1;
+
+			enum fade_type {
+				no_fade = 0,
+				fade_in,
+				fade_out
+			} fade = fade_in;
+
+			enum on_fade_out_type {
+				fade_pause,
+				fade_stop
+			} on_fade_out = fade_stop;
+
+			void update(float elapsed_time) {
+				if (fade) {
+					fade_timer += elapsed_time;
+					if (fade_timer > fade_duration) { 
+						if (fade_in)	{ SEI->SetVolume(base_volume); }
+						else			{ if (on_fade_out == fade_stop) SEI->Stop(); else SEI->Pause(); }
+						fade = no_fade;
+					}
+					else {
+						float t = fade_timer / fade_duration;
+						if (fade_out) { t = 1 - t; }
+						SEI->SetVolume(base_volume * t);
+					}
+				}
+			}
+
 		};
 		
 		string filepath = L"";
@@ -35,9 +66,10 @@ namespace BLIB {
 			AE = std::make_unique<DirectX::AudioEngine>();
 		}
 
-		void update() {
+		void update(float elapsed_time) {
 			AE->Update();
 			for (auto it = tracks.begin(); it != tracks.end(); ) {
+				it->second.update(elapsed_time);
 				if (it->second.SEI->GetState() == DirectX::STOPPED) { it = tracks.erase(it); }
 				else { ++it; }
 			}
@@ -68,7 +100,7 @@ namespace BLIB {
 			}
 		}
 
-		int play(string filename, bool loop) {
+		int play(string filename, float fade_time, bool loop) {
 			load(filename);
 
 			auto source = sources.find(filename);
@@ -81,58 +113,79 @@ namespace BLIB {
 			int id = tracks_cursor++;
 			if (tracks_cursor > max_tracks) tracks_cursor = 0;
 
-			tracks[id].parent = filename;
+			tracks[id].parent = &source->second;
 			tracks[id].SEI = source->second.SE->CreateInstance();
 
-			tracks[id].SEI->SetVolume(source->second.volume);
+			tracks[id].base_volume = source->second.volume;
 			tracks[id].SEI->SetPitch(source->second.pitch);
 			tracks[id].SEI->SetPan(source->second.pan);
+
+			tracks[id].fade = audio_instance::fade_in;
+			tracks[id].fade_duration = fade_time;
+			tracks[id].fade_timer = 0;
 
 			tracks[id].SEI->Play(loop);
 
 			return id;
 		}
 
-		void pause(int instance) {
+		void pause(int instance, float fade_time) {
 			if (instance == -1) {
 				for (auto& track : tracks) {
-					track.second.SEI->Pause();
+					track.second.fade = audio_instance::fade_out;
+					track.second.on_fade_out = audio_instance::fade_pause;
+					track.second.fade_duration = fade_time;
+					track.second.fade_timer = 0;
 				}
 			}
 			else {
 				auto track = tracks.find(instance);
 				if (track != tracks.end()) {
-					track->second.SEI->Pause();
+					track->second.fade = audio_instance::fade_out;
+					track->second.on_fade_out = audio_instance::fade_pause;
+					track->second.fade_duration = fade_time;
+					track->second.fade_timer = 0;
 				}
 			}
 		}
 
-		void resume(int instance) {
+		void resume(int instance, float fade_time) {
 			if (instance == -1) {
 				for (auto& track : tracks) {
 					track.second.SEI->Resume();
+					track.second.fade = audio_instance::fade_in;
+					track.second.fade_duration = fade_time;
+					track.second.fade_timer = 0;
 				}
 			}
 			else {
 				auto track = tracks.find(instance);
 				if (track != tracks.end()) {
 					track->second.SEI->Resume();
+					track->second.fade = audio_instance::fade_in;
+					track->second.fade_duration = fade_time;
+					track->second.fade_timer = 0;
 				}
 			}
 		}
 
-		void stop(int instance) {
+		void stop(int instance, float fade_time) {
 			if (instance == -1) {
 				for (auto& track : tracks) {
-					track.second.SEI->Stop();
+					track.second.fade = audio_instance::fade_out;
+					track.second.on_fade_out = audio_instance::fade_stop;
+					track.second.fade_duration = fade_time;
+					track.second.fade_timer = 0;
 				}
-				tracks.clear();
 			}
 			else {
 				auto track = tracks.find(instance);
 				if (track != tracks.end()) {
 					track->second.SEI->Stop();
-					tracks.erase(instance);
+					track->second.fade = audio_instance::fade_out;
+					track->second.on_fade_out = audio_instance::fade_stop;
+					track->second.fade_duration = fade_time;
+					track->second.fade_timer = 0;
 				}
 			}
 		}
