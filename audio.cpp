@@ -45,7 +45,7 @@ namespace BLIB {
 					}
 					else {
 						float t = fade_timer / fade_duration;
-						if (fade_out) { t = 1 - t; }
+						if (fade == fade_out) { t = 1 - t; }
 						SEI->SetVolume(base_volume * t);
 					}
 				}
