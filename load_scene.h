@@ -44,7 +44,6 @@ namespace BLIB {
 		template<class S, typename... Args>
 		load_scene(int slot, transition t = transition::none, float duration = 0, Args&&... args) : slot(slot), scene_id(manager::add(new S(std::forward<Args>(args)...))), exit_transition(t), exit_duration(duration) { canvas::set_background(background_color); }
 
-
 		inline void init() override {
 			if (background_filename != L"-1") {
 				background.load_sprite(background_filename);

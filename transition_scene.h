@@ -18,6 +18,8 @@ namespace BLIB {
 
 		const float duration;
 
+		void on_load() override { force_wake(); }
+
 	public:
 		transition_scene(generic::scene* to, generic::scene* from, int slot, transition t, float duration) : to_scene(to), from_scene(from), slot(slot), t(t), duration(duration) {
 			assert(t != transition::none && (to || from)); 
@@ -36,8 +38,8 @@ namespace BLIB {
 
 		void init() override {} // is not called
 
-		void update	(float elapsed_time)	override { if (timer > duration) { finish(); unpreserve(this); } }
-		void idle	(float elapsed_time)	override { finish(); BLIB::manager::unstage(get_id()); unpreserve(this); }
+		void update	(float elapsed_time)	override { if (timer > duration) { finish(); BLIB::manager::unstage(get_id()); } }
+		void idle	(float elapsed_time)	override { finish(); BLIB::manager::unstage(get_id()); }
 
 		void draw(render_settings) const override {
 			switch (t) {
