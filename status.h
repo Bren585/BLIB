@@ -76,7 +76,7 @@ namespace BLIB {
 		void unpreserve		(void* p)	{ preservatives.erase(p); }
 		bool is_preserved	() const	{ return preservatives.size() > 0; }
 
-		task_id get_id	()				{ return id; }
+		task_id get_id	() const		{ return id; }
 		bool	init_id	(task_id tid)	{ if (!id) { id = tid; return true; } else { return false; } }
 	};
 

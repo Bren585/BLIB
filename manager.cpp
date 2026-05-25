@@ -4,7 +4,7 @@
 #include "transition_scene.h"
 #include "load_scene.h"
 
-using std::unordered_map;
+using std::map;
 using std::vector;
 using std::unique_ptr;
 
@@ -13,7 +13,7 @@ namespace BLIB {
 
 	namespace manager {
 
-		unordered_map<task_id, unique_ptr<status>> tasks;
+		map<task_id, unique_ptr<status>> tasks;
 
 		task_id		scene_stack[scene_stack_size] = { 0 };
 
@@ -21,7 +21,7 @@ namespace BLIB {
 		bool		stop			= false;
 
 		namespace _private {
-			unordered_map<task_id, unique_ptr<status>>& get_tasks() { return tasks; }
+			map<task_id, unique_ptr<status>>& get_tasks() { return tasks; }
 		}
 
 		//static scene* get_scene(task_id id) {

@@ -36,7 +36,10 @@ namespace BLIB {
 		transition	exit_transition;
 		float		exit_duration;
 
-		void on_load() override { force_wake(); }
+		void on_load() override { 
+			if (manager::peek_slot(slot)->get_id() == get_id()) force_wake();
+			else												force_sleep();
+		}
 
 	public:
 		load_scene(task_id id, int slot, transition t = transition::none, float duration = 0) : slot(slot), scene_id(id), exit_transition(t), exit_duration(duration) { canvas::set_background(background_color); }

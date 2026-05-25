@@ -19,6 +19,15 @@ namespace BLIB {
 		const float duration;
 
 		void on_load() override { force_wake(); }
+		
+		void end_transition() {
+			if (report() != finished) {
+				unpreserve(this);
+				finish();
+			}
+		}
+
+		void on_sleep() override { end_transition(); }
 
 	public:
 		transition_scene(generic::scene* to, generic::scene* from, int slot, transition t, float duration) : to_scene(to), from_scene(from), slot(slot), t(t), duration(duration) {
@@ -38,8 +47,8 @@ namespace BLIB {
 
 		void init() override {} // is not called
 
-		void update	(float elapsed_time)	override { if (timer > duration) { finish(); BLIB::manager::unstage(get_id()); } }
-		void idle	(float elapsed_time)	override { finish(); BLIB::manager::unstage(get_id()); }
+		void update	(float elapsed_time)	override { if (timer > duration) { end_transition(); } }
+		void idle	(float elapsed_time)	override { end_transition(); }
 
 		void draw(render_settings) const override {
 			switch (t) {
@@ -60,18 +69,18 @@ namespace BLIB {
 			}
 		} 
 
-		void kill()	override {
+		void kill() override {
 			switch (t) {
 			case transition::none:
 				break;
 			case transition::fade:
-				if (from_scene) { from_scene->tint.a = 1;   }
-				if (to_scene)	{ to_scene->tint.a = 1; }
+				if (from_scene) { from_scene->tint.a = 1; }
+				if (to_scene) { to_scene->tint.a = 1; }
 				break;
 			}
 
-			if (from_scene) { from_scene->unpreserve(this);										}
-			if (to_scene)	{ to_scene	->unpreserve(this);  manager::stage(to_scene_id, slot); }
+			if (from_scene) { from_scene->unpreserve(this); }
+			if (to_scene)	{ to_scene	->unpreserve(this); manager::stage(to_scene_id, slot); }
 		}
 
 	};
